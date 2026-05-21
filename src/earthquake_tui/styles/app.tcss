@@ -1,0 +1,133 @@
+/* 強震モニタ TUI - Textual CSS スタイル */
+
+Screen {
+    background: $surface;
+    layout: grid;
+    grid-size: 1;
+    grid-rows: auto 1fr auto;
+}
+
+/* ── ヘッダー ─────────────────── */
+#app-header {
+    dock: top;
+    height: 3;
+    background: rgb(25, 25, 35);
+    color: white;
+    text-align: center;
+    padding: 1 0;
+    text-style: bold;
+    border-bottom: heavy rgb(220, 50, 50);
+}
+
+/* ── メインコンテンツ ────────── */
+#main-content {
+    layout: horizontal;
+    height: 1fr;
+}
+
+/* 左パネル: 地図 */
+#map-panel {
+    width: 50;
+    min-width: 48;
+    border: round rgb(60, 70, 100);
+    background: rgb(15, 15, 25);
+    padding: 0;
+}
+
+#map-panel-title {
+    dock: top;
+    height: 1;
+    padding: 0 1;
+    background: rgb(30, 35, 55);
+    color: rgb(140, 160, 220);
+    text-style: bold;
+}
+
+/* 右パネル: 情報 */
+#info-panel {
+    width: 1fr;
+    min-width: 30;
+    layout: vertical;
+}
+
+#detail-panel {
+    height: auto;
+    max-height: 14;
+    border: round rgb(60, 70, 100);
+    background: rgb(15, 15, 25);
+}
+
+#detail-panel-title {
+    dock: top;
+    height: 1;
+    padding: 0 1;
+    background: rgb(30, 35, 55);
+    color: rgb(140, 160, 220);
+    text-style: bold;
+}
+
+#intensity-panel {
+    height: auto;
+    max-height: 14;
+    border: round rgb(60, 70, 100);
+    background: rgb(15, 15, 25);
+}
+
+#intensity-panel-title {
+    dock: top;
+    height: 1;
+    padding: 0 1;
+    background: rgb(30, 35, 55);
+    color: rgb(140, 160, 220);
+    text-style: bold;
+}
+
+/* ── 下部パネル: 履歴 ──────── */
+#history-panel {
+    height: auto;
+    max-height: 14;
+    min-height: 8;
+    border: round rgb(60, 70, 100);
+    background: rgb(15, 15, 25);
+    dock: bottom;
+}
+
+#history-panel-title {
+    dock: top;
+    height: 1;
+    padding: 0 1;
+    background: rgb(30, 35, 55);
+    color: rgb(140, 160, 220);
+    text-style: bold;
+}
+
+QuakeTableWidget {
+    background: rgb(15, 15, 25);
+}
+
+QuakeTableWidget > .datatable--header {
+    background: rgb(30, 35, 55);
+    color: rgb(180, 190, 220);
+    text-style: bold;
+}
+
+QuakeTableWidget > .datatable--cursor {
+    background: rgb(50, 55, 85);
+    color: white;
+    text-style: bold;
+}
+
+QuakeTableWidget > .datatable--even-row {
+    background: rgb(18, 18, 30);
+}
+
+QuakeTableWidget > .datatable--odd-row {
+    background: rgb(15, 15, 25);
+}
+
+/* ── ステータスバー ─────────── */
+StatusBarWidget {
+    background: rgb(20, 20, 32);
+    color: rgb(140, 150, 180);
+    border-top: heavy rgb(60, 70, 100);
+}
