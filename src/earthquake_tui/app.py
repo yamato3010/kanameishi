@@ -95,8 +95,14 @@ class EarthquakeApp(App):
 
     async def on_unmount(self) -> None:
         """アプリ終了時のクリーンアップ"""
-        await self._ws.stop()
-        await self._client.close()
+        try:
+            await self._ws.stop()
+        except Exception:
+            pass
+        try:
+            await self._client.close()
+        except Exception:
+            pass
 
     async def _fetch_initial_data(self) -> None:
         """初期データをREST APIから取得"""
@@ -210,6 +216,13 @@ class EarthquakeApp(App):
 
     def on_data_table_row_selected(self, event: QuakeTableWidget.RowSelected) -> None:
         """テーブル行選択イベント"""
+        table = self.query_one("#quake-table", QuakeTableWidget)
+        quake = table.get_selected_quake()
+        if quake:
+            self._select_quake(quake)
+
+    def on_data_table_row_highlighted(self, event: QuakeTableWidget.RowHighlighted) -> None:
+        """テーブル行ハイライト変更イベント（カーソル移動で連動）"""
         table = self.query_one("#quake-table", QuakeTableWidget)
         quake = table.get_selected_quake()
         if quake:

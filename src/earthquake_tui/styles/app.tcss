@@ -1,10 +1,8 @@
 /* 強震モニタ TUI - Textual CSS スタイル */
 
 Screen {
-    background: $surface;
-    layout: grid;
-    grid-size: 1;
-    grid-rows: auto 1fr auto;
+    background: rgb(12, 12, 20);
+    layout: vertical;
 }
 
 /* ── ヘッダー ─────────────────── */
@@ -16,22 +14,24 @@ Screen {
     text-align: center;
     padding: 1 0;
     text-style: bold;
-    border-bottom: heavy rgb(220, 50, 50);
+    border-bottom: heavy rgb(200, 40, 40);
 }
 
 /* ── メインコンテンツ ────────── */
 #main-content {
     layout: horizontal;
     height: 1fr;
+    min-height: 16;
 }
 
 /* 左パネル: 地図 */
 #map-panel {
-    width: 50;
-    min-width: 48;
-    border: round rgb(60, 70, 100);
+    width: 1fr;
+    min-width: 35;
+    border: round rgb(50, 60, 90);
     background: rgb(15, 15, 25);
     padding: 0;
+    overflow-y: auto;
 }
 
 #map-panel-title {
@@ -39,21 +39,22 @@ Screen {
     height: 1;
     padding: 0 1;
     background: rgb(30, 35, 55);
-    color: rgb(140, 160, 220);
+    color: rgb(120, 140, 200);
     text-style: bold;
 }
 
 /* 右パネル: 情報 */
 #info-panel {
-    width: 1fr;
-    min-width: 30;
+    width: 38;
+    min-width: 32;
+    max-width: 45;
     layout: vertical;
 }
 
 #detail-panel {
     height: auto;
-    max-height: 14;
-    border: round rgb(60, 70, 100);
+    max-height: 12;
+    border: round rgb(50, 60, 90);
     background: rgb(15, 15, 25);
 }
 
@@ -62,14 +63,14 @@ Screen {
     height: 1;
     padding: 0 1;
     background: rgb(30, 35, 55);
-    color: rgb(140, 160, 220);
+    color: rgb(120, 140, 200);
     text-style: bold;
 }
 
 #intensity-panel {
     height: auto;
     max-height: 14;
-    border: round rgb(60, 70, 100);
+    border: round rgb(50, 60, 90);
     background: rgb(15, 15, 25);
 }
 
@@ -78,7 +79,7 @@ Screen {
     height: 1;
     padding: 0 1;
     background: rgb(30, 35, 55);
-    color: rgb(140, 160, 220);
+    color: rgb(120, 140, 200);
     text-style: bold;
 }
 
@@ -86,10 +87,9 @@ Screen {
 #history-panel {
     height: auto;
     max-height: 14;
-    min-height: 8;
-    border: round rgb(60, 70, 100);
+    min-height: 6;
+    border: round rgb(50, 60, 90);
     background: rgb(15, 15, 25);
-    dock: bottom;
 }
 
 #history-panel-title {
@@ -97,7 +97,7 @@ Screen {
     height: 1;
     padding: 0 1;
     background: rgb(30, 35, 55);
-    color: rgb(140, 160, 220);
+    color: rgb(120, 140, 200);
     text-style: bold;
 }
 
@@ -112,7 +112,7 @@ QuakeTableWidget > .datatable--header {
 }
 
 QuakeTableWidget > .datatable--cursor {
-    background: rgb(50, 55, 85);
+    background: rgb(45, 50, 80);
     color: white;
     text-style: bold;
 }
@@ -129,5 +129,5 @@ QuakeTableWidget > .datatable--odd-row {
 StatusBarWidget {
     background: rgb(20, 20, 32);
     color: rgb(140, 150, 180);
-    border-top: heavy rgb(60, 70, 100);
+    border-top: heavy rgb(50, 60, 90);
 }
