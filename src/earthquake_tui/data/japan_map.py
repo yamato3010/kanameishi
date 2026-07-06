@@ -10,6 +10,8 @@
 
 from __future__ import annotations
 
+import math
+
 # 地図の地理的境界
 LAT_MIN = 30.0
 LAT_MAX = 46.0
@@ -146,6 +148,28 @@ def latlon_to_grid(lat: float, lon: float) -> tuple[int, int] | None:
         return (INSET_ROW0 + row, INSET_COL0 + col)
 
     return None
+
+
+def is_inset_cell(row: int, col: int) -> bool:
+    """沖縄インセット枠内 (枠線含む) のセルか判定"""
+    return row >= INSET_ROW0 - 1 and col >= INSET_COL0 - 1
+
+
+def grid_to_latlon(row: int, col: int) -> tuple[float, float]:
+    """本土グリッド座標を緯度経度に逆変換 (latlon_to_grid の逆写像)"""
+    lat = LAT_MAX - row / (MAP_HEIGHT - 1) * (LAT_MAX - LAT_MIN)
+    lon = LON_MIN + col / (MAP_WIDTH - 1) * (LON_MAX - LON_MIN)
+    return (lat, lon)
+
+
+def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """2地点間の大円距離 (km)"""
+    r = 6371.0
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    dp = p2 - p1
+    dl = math.radians(lon2 - lon1)
+    a = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
+    return 2 * r * math.asin(math.sqrt(a))
 
 
 def pref_to_grid(pref: str) -> tuple[int, int] | None:

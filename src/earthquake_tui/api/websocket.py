@@ -5,14 +5,17 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 from typing import Callable, Optional
 
 import websockets
 from websockets.asyncio.client import connect
 
-from .models import QuakeInfo, TsunamiInfo
+from .models import EEWInfo, QuakeInfo, TsunamiInfo
 
 WS_URL = "wss://api.p2pquake.net/v2/ws"
+# 開発用サンドボックス (過去データを繰り返し配信、EEWのテストに使える)
+SANDBOX_WS_URL = "wss://api-realtime-sandbox.p2pquake.net/v2/ws"
 RECONNECT_DELAY = 5  # 秒
 MAX_RECONNECT_DELAY = 60  # 秒
 
@@ -31,14 +34,20 @@ class P2PQuakeWebSocket:
         self._task: Optional[asyncio.Task] = None
         self._on_quake: Optional[Callable[[QuakeInfo], None]] = None
         self._on_tsunami: Optional[Callable[[TsunamiInfo], None]] = None
+        self._on_eew: Optional[Callable[[EEWInfo], None]] = None
         self._on_status: Optional[Callable[[bool], None]] = None
         self._reconnect_delay = RECONNECT_DELAY
+        # EQTUI_SANDBOX=1 でサンドボックスAPIに接続 (EEW動作確認用)
+        self._url = SANDBOX_WS_URL if os.environ.get("EQTUI_SANDBOX") else WS_URL
 
     def on_quake(self, callback: Callable[[QuakeInfo], None]) -> None:
         self._on_quake = callback
 
     def on_tsunami(self, callback: Callable[[TsunamiInfo], None]) -> None:
         self._on_tsunami = callback
+
+    def on_eew(self, callback: Callable[[EEWInfo], None]) -> None:
+        self._on_eew = callback
 
     def on_status_change(self, callback: Callable[[bool], None]) -> None:
         self._on_status = callback
@@ -87,8 +96,8 @@ class P2PQuakeWebSocket:
 
     async def _connect_and_listen(self) -> None:
         """WebSocket接続して受信"""
-        log.info("WebSocket接続中: %s", WS_URL)
-        async with connect(WS_URL, close_timeout=10) as ws:
+        log.info("WebSocket接続中: %s", self._url)
+        async with connect(self._url, close_timeout=10) as ws:
             self._ws = ws
             self._reconnect_delay = RECONNECT_DELAY
             self._notify_status(True)
@@ -111,6 +120,9 @@ class P2PQuakeWebSocket:
         elif code == 552 and self._on_tsunami:
             tsunami = TsunamiInfo.from_dict(data)
             self._on_tsunami(tsunami)
+        elif code == 556 and self._on_eew:
+            eew = EEWInfo.from_dict(data)
+            self._on_eew(eew)
 
     def _notify_status(self, connected: bool) -> None:
         if self._on_status:

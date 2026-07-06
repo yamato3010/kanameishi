@@ -12,6 +12,16 @@ HeaderWidget {
     border-bottom: heavy #e51e28;
 }
 
+/* ── 緊急地震速報バナー (発表中のみ表示) ── */
+#eew-banner {
+    height: 1;
+    display: none;
+    background: #8c14a0;
+    color: white;
+    text-style: bold;
+    padding: 0 2;
+}
+
 /* ── 津波警告バナー (発表中のみ表示) ── */
 #tsunami-banner {
     height: 1;
@@ -54,6 +64,17 @@ HeaderWidget {
     width: 1fr;
     min-width: 34;
     layout: vertical;
+}
+
+#eew-panel {
+    display: none;
+    height: auto;
+    max-height: 14;
+    border: heavy #e51e28;
+    background: #1a0d14;
+    overflow-y: auto;
+    border-title-color: #ff5a5a;
+    border-title-style: bold;
 }
 
 #detail-panel {

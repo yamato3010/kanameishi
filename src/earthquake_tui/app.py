@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from textual.app import App, ComposeResult
@@ -13,9 +13,18 @@ from textual.binding import Binding
 
 from .api.client import P2PQuakeClient
 from .api.websocket import P2PQuakeWebSocket
-from .api.models import QuakeInfo, TsunamiInfo, scale_hex
+from .api.models import (
+    EEWArea,
+    EEWInfo,
+    Hypocenter,
+    QuakeInfo,
+    TsunamiInfo,
+    scale_hex,
+    scale_name,
+)
 from .widgets.header import HeaderWidget
 from .widgets.japan_map import JapanMapWidget, build_legend
+from .widgets.eew_panel import EEWPanelWidget
 from .widgets.tsunami_panel import TsunamiPanelWidget
 from .widgets.quake_detail import QuakeDetailWidget
 from .widgets.quake_table import QuakeTableWidget
@@ -29,6 +38,9 @@ CSS_PATH = Path(__file__).parent / "styles" / "app.tcss"
 # 自動更新間隔 (秒)
 POLL_INTERVAL = 60
 
+# 緊急地震速報の表示継続時間 (発生からの秒数)
+EEW_DISPLAY_SECONDS = 180
+
 
 class EarthquakeApp(App):
     """強震モニタ TUI アプリケーション"""
@@ -40,6 +52,7 @@ class EarthquakeApp(App):
         Binding("q", "quit", "終了", priority=True),
         Binding("r", "refresh", "更新"),
         Binding("d", "show_detail", "詳細"),
+        Binding("e", "demo_eew", "EEWデモ", show=False),
     ]
 
     def __init__(self) -> None:
@@ -48,10 +61,13 @@ class EarthquakeApp(App):
         self._ws = P2PQuakeWebSocket()
         self._quakes: list[QuakeInfo] = []
         self._latest_quake: QuakeInfo | None = None
+        self._eew: EEWInfo | None = None
+        self._eew_received_at: datetime | None = None
 
     def compose(self) -> ComposeResult:
-        # ヘッダー + 津波警告バナー (通常は非表示)
+        # ヘッダー + EEW/津波警告バナー (通常は非表示)
         yield HeaderWidget(id="app-header")
+        yield Static("", id="eew-banner")
         yield Static("", id="tsunami-banner")
 
         # メインコンテンツ
@@ -62,8 +78,12 @@ class EarthquakeApp(App):
                 yield JapanMapWidget(id="japan-map")
                 yield Static(build_legend(), id="map-legend")
 
-            # 右: 地震詳細 + 震度分布 + 津波情報
+            # 右: EEW(発表中のみ) + 地震詳細 + 震度分布 + 津波情報
             with Vertical(id="info-panel"):
+                with Container(id="eew-panel") as eew_panel:
+                    eew_panel.border_title = "🚨 緊急地震速報"
+                    yield EEWPanelWidget(id="eew-info")
+
                 with Container(id="detail-panel") as detail_panel:
                     detail_panel.border_title = "📋 最新地震情報"
                     yield QuakeDetailWidget(id="quake-detail")
@@ -89,6 +109,7 @@ class EarthquakeApp(App):
         # WebSocket コールバック設定
         self._ws.on_quake(self._on_ws_quake)
         self._ws.on_tsunami(self._on_ws_tsunami)
+        self._ws.on_eew(self._on_ws_eew)
         self._ws.on_status_change(self._on_ws_status)
 
         # 初期データ取得
@@ -102,6 +123,9 @@ class EarthquakeApp(App):
 
         # 詳細パネルの相対時刻 (「n分前」) を定期更新
         self.set_interval(30, self._refresh_detail)
+
+        # EEW表示の期限切れチェック
+        self.set_interval(5, self._check_eew_expiry)
 
     def _refresh_detail(self) -> None:
         self.query_one("#quake-detail", QuakeDetailWidget).refresh()
@@ -166,6 +190,56 @@ class EarthquakeApp(App):
     def _on_ws_tsunami(self, tsunami: TsunamiInfo) -> None:
         """WebSocketから津波情報を受信"""
         self._handle_tsunami(tsunami)
+
+    def _on_ws_eew(self, eew: EEWInfo) -> None:
+        """WebSocketから緊急地震速報〔警報〕を受信"""
+        if eew.cancelled:
+            self._clear_eew()
+            self.notify("緊急地震速報は取り消されました", severity="information", timeout=10)
+            return
+
+        self._eew = eew
+        self._eew_received_at = datetime.now()
+
+        # 地図に到達予想円、パネルにカウントダウンを表示
+        self.query_one("#japan-map", JapanMapWidget).update_eew(eew)
+        self.query_one("#eew-info", EEWPanelWidget).update_eew(eew)
+        self.query_one("#eew-panel").display = True
+
+        # バナー表示
+        banner = self.query_one("#eew-banner", Static)
+        mag = f" M{eew.magnitude:.1f}" if eew.magnitude > 0 else ""
+        test = "【テスト】" if eew.test else ""
+        banner.update(
+            f"🚨 {test}緊急地震速報〔警報〕 ─ {eew.location}{mag}"
+            f" 予想最大震度 {scale_name(eew.max_expected_scale)}"
+        )
+        banner.display = True
+
+        self.notify(
+            f"🚨 緊急地震速報: {eew.location}{mag} 予想最大震度{scale_name(eew.max_expected_scale)}",
+            severity="error",
+            timeout=20,
+        )
+
+    def _clear_eew(self) -> None:
+        """EEW表示を終了"""
+        self._eew = None
+        self._eew_received_at = None
+        self.query_one("#japan-map", JapanMapWidget).update_eew(None)
+        self.query_one("#eew-info", EEWPanelWidget).update_eew(None)
+        self.query_one("#eew-panel").display = False
+        self.query_one("#eew-banner", Static).display = False
+
+    def _check_eew_expiry(self) -> None:
+        """発生から一定時間が過ぎたEEW表示を消す"""
+        if self._eew is None:
+            return
+        elapsed = self._eew.elapsed_seconds()
+        if elapsed is None and self._eew_received_at is not None:
+            elapsed = (datetime.now() - self._eew_received_at).total_seconds()
+        if elapsed is not None and elapsed > EEW_DISPLAY_SECONDS:
+            self._clear_eew()
 
     def _on_ws_status(self, connected: bool) -> None:
         """WebSocket接続状態変更"""
@@ -268,6 +342,58 @@ class EarthquakeApp(App):
     def action_refresh(self) -> None:
         """手動更新"""
         self.run_worker(self._fetch_initial_data())
+
+    def action_demo_eew(self) -> None:
+        """デモ用の緊急地震速報を発生させる (eキー、動作確認用)"""
+        from .data.japan_map import PREF_COORDINATES, haversine_km
+
+        now = datetime.now()
+        origin = now - timedelta(seconds=3)
+        hypo_lat, hypo_lon, depth = 33.6, 136.3, 30
+
+        # 予報区の到達予測時刻をS波の走時から逆算して生成
+        targets = [
+            ("三重県", "三重県南部", 55),
+            ("和歌山県", "和歌山県南部", 55),
+            ("奈良県", "奈良県", 50),
+            ("愛知県", "愛知県西部", 50),
+            ("大阪府", "大阪府南部", 45),
+            ("静岡県", "静岡県西部", 45),
+            ("京都府", "京都府南部", 40),
+            ("東京都", "東京都２３区", 40),
+        ]
+        areas = []
+        for pref, name, scale in targets:
+            lat, lon = PREF_COORDINATES[pref]
+            dist = haversine_km(hypo_lat, hypo_lon, lat, lon)
+            travel = (dist**2 + depth**2) ** 0.5 / 4.0
+            arrival = origin + timedelta(seconds=travel)
+            areas.append(
+                EEWArea(
+                    pref=pref,
+                    name=name,
+                    scale_from=scale,
+                    scale_to=scale,
+                    kind_code="10",
+                    arrival_time=arrival.strftime("%Y/%m/%d %H:%M:%S"),
+                )
+            )
+
+        eew = EEWInfo(
+            id="demo",
+            test=True,
+            time=now.strftime("%Y/%m/%d %H:%M:%S"),
+            origin_time=origin.strftime("%Y/%m/%d %H:%M:%S"),
+            hypocenter=Hypocenter(
+                name="紀伊半島南東沖",
+                latitude=hypo_lat,
+                longitude=hypo_lon,
+                depth=depth,
+                magnitude=7.2,
+            ),
+            areas=areas,
+        )
+        self._on_ws_eew(eew)
 
     def action_show_detail(self) -> None:
         """選択中の地震の詳細を表示"""
