@@ -38,21 +38,16 @@ class JapanMapWidget(Widget):
             for ch in padded:
                 if ch == "#":
                     row.append(("░", "rgb(60,70,90)"))
-                else:
+                elif ch == " ":
                     row.append((" ", ""))
+                else:
+                    # 沖縄インセットの枠線・ラベルはそのまま描画
+                    row.append((ch, "rgb(90,100,120)"))
             grid.append(row)
 
         # 地震データがあればオーバーレイ
         quake = self.quake_data
         if quake is not None:
-            # 震源をプロット
-            if quake.latitude and quake.longitude:
-                pos = latlon_to_grid(quake.latitude, quake.longitude)
-                if pos:
-                    r, c = pos
-                    if 0 <= r < MAP_HEIGHT and 0 <= c < MAP_WIDTH:
-                        grid[r][c] = ("★", "bold bright_red")
-
             # 観測点をプロット
             plotted: set[tuple[int, int]] = set()
             for point in quake.points:
@@ -63,6 +58,14 @@ class JapanMapWidget(Widget):
                         color = scale_color(point.scale)
                         grid[r][c] = ("●", f"bold {color}")
                         plotted.add(pos)
+
+            # 震源をプロット (観測点と同セルの場合は震源を優先)
+            if quake.latitude and quake.longitude:
+                pos = latlon_to_grid(quake.latitude, quake.longitude)
+                if pos:
+                    r, c = pos
+                    if 0 <= r < MAP_HEIGHT and 0 <= c < MAP_WIDTH:
+                        grid[r][c] = ("★", "bold bright_red")
 
         # Text に変換
         text = Text()

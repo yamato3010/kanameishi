@@ -2,6 +2,10 @@
 
 地図範囲: 緯度 30.0°N〜46.0°N / 経度 128.0°E〜146.0°E
 グリッド: 45列 × 33行
+
+右下に沖縄・奄美・先島諸島のインセット(枠付き小窓)があり、
+緯度 24.0°N〜30.0°N / 経度 122.5°E〜130.5°E をカバーする。
+本土地図が緯度30°以上を受け持つので、トカラ列島を含め切れ目なく描画できる。
 """
 
 from __future__ import annotations
@@ -14,6 +18,16 @@ LON_MAX = 146.0
 
 MAP_HEIGHT = 33
 MAP_WIDTH = 45
+
+# 沖縄インセットの地理的境界と配置
+INSET_LAT_MIN = 24.0
+INSET_LAT_MAX = 30.0
+INSET_LON_MIN = 122.5
+INSET_LON_MAX = 130.5
+INSET_ROW0 = 26  # インセット内容領域の左上 (絶対グリッド座標)
+INSET_COL0 = 28
+INSET_ROWS = 6   # 1行 = 緯度1.0°
+INSET_COLS = 16  # 1列 = 経度0.5°
 
 # ASCIIアート日本地図  ('#' = 陸地, ' ' = 海)
 # 行0 = 北 (緯度46°), 行32 = 南 (緯度30°) — 1行 = 緯度0.5°
@@ -47,14 +61,15 @@ JAPAN_MAP_RAW: list[str] = [
     "         ###################                 ",  # 22 34.75 京阪神/伊豆半島
     "   #   ###############                       ",  # 23 34.25 対馬/広島/紀伊半島
     "     ###############                         ",  # 24 33.75 福岡/四国
-    "   ########## ##                             ",  # 25 33.25 佐賀/大分/室戸岬
-    " #  ###### #                                 ",  # 26 32.75 五島/長崎/熊本
-    "     ####                                    ",  # 27 32.25 天草
-    "     ####                                    ",  # 28 31.75 鹿児島/宮崎
-    "     ###                                     ",  # 29 31.25 薩摩・大隅半島
-    "       #                                     ",  # 30 30.75 大隅半島南端
-    "      #                                      ",  # 31 30.25 屋久島
-    "                                             ",  # 32 29.75
+    # 右下: 沖縄インセット (lat 24-30 / lon 122.5-130.5, 枠内1行=1.0°)
+    "   ########## ##           ┌────────────────┐",  # 25 33.25 佐賀/大分/室戸岬
+    " #  ###### #               │              # │",  # 26 32.75 五島/長崎/熊本 | トカラ
+    "     ####                  │             ## │",  # 27 32.25 天草 | 奄美大島
+    "     ####                  │            #   │",  # 28 31.75 鹿児島/宮崎 | 徳之島・沖永良部
+    "     ###                   │        # ##    │",  # 29 31.25 薩摩・大隅 | 久米島・沖縄本島
+    "       #                   │                │",  # 30 30.75 大隅半島南端
+    "      #                    │# ## #          │",  # 31 30.25 屋久島 | 与那国・石垣・宮古
+    "                           └─沖縄───────────┘",  # 32 29.75 (沖縄は全角のため43文字=表示幅45)
 ]
 
 # 都道府県 → おおよその緯度経度 (地図プロット用)
@@ -112,17 +127,25 @@ PREF_COORDINATES: dict[str, tuple[float, float]] = {
 def latlon_to_grid(lat: float, lon: float) -> tuple[int, int] | None:
     """緯度経度をグリッド座標 (row, col) に変換
 
-    地図範囲外の場合は None を返す。
+    本土地図の範囲外でも沖縄インセットの範囲内ならインセット内の座標を返す。
+    どちらの範囲にも入らない場合は None を返す。
     """
-    if not (LAT_MIN <= lat <= LAT_MAX and LON_MIN <= lon <= LON_MAX):
-        return None
+    if LAT_MIN <= lat <= LAT_MAX and LON_MIN <= lon <= LON_MAX:
+        row = int((LAT_MAX - lat) / (LAT_MAX - LAT_MIN) * (MAP_HEIGHT - 1))
+        col = int((lon - LON_MIN) / (LON_MAX - LON_MIN) * (MAP_WIDTH - 1))
+        row = max(0, min(MAP_HEIGHT - 1, row))
+        col = max(0, min(MAP_WIDTH - 1, col))
+        return (row, col)
 
-    row = int((LAT_MAX - lat) / (LAT_MAX - LAT_MIN) * (MAP_HEIGHT - 1))
-    col = int((lon - LON_MIN) / (LON_MAX - LON_MIN) * (MAP_WIDTH - 1))
+    # lat=30.0ちょうどは本土側で処理されるため、インセットは 30.0 未満を受け持つ
+    if INSET_LAT_MIN <= lat < INSET_LAT_MAX and INSET_LON_MIN <= lon <= INSET_LON_MAX:
+        row = int((INSET_LAT_MAX - lat) / (INSET_LAT_MAX - INSET_LAT_MIN) * INSET_ROWS)
+        col = int((lon - INSET_LON_MIN) / (INSET_LON_MAX - INSET_LON_MIN) * INSET_COLS)
+        row = min(INSET_ROWS - 1, row)
+        col = min(INSET_COLS - 1, col)
+        return (INSET_ROW0 + row, INSET_COL0 + col)
 
-    row = max(0, min(MAP_HEIGHT - 1, row))
-    col = max(0, min(MAP_WIDTH - 1, col))
-    return (row, col)
+    return None
 
 
 def pref_to_grid(pref: str) -> tuple[int, int] | None:
