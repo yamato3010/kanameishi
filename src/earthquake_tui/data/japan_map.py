@@ -2,9 +2,15 @@
 
 地図範囲: 緯度 30.0°N〜46.0°N / 経度 128.0°E〜146.0°E
 グリッド: 45列 × 33行
+
+右下に沖縄・奄美・先島諸島のインセット(枠付き小窓)があり、
+緯度 24.0°N〜30.0°N / 経度 122.5°E〜130.5°E をカバーする。
+本土地図が緯度30°以上を受け持つので、トカラ列島を含め切れ目なく描画できる。
 """
 
 from __future__ import annotations
+
+import math
 
 # 地図の地理的境界
 LAT_MIN = 30.0
@@ -15,45 +21,57 @@ LON_MAX = 146.0
 MAP_HEIGHT = 33
 MAP_WIDTH = 45
 
+# 沖縄インセットの地理的境界と配置
+INSET_LAT_MIN = 24.0
+INSET_LAT_MAX = 30.0
+INSET_LON_MIN = 122.5
+INSET_LON_MAX = 130.5
+INSET_ROW0 = 26  # インセット内容領域の左上 (絶対グリッド座標)
+INSET_COL0 = 28
+INSET_ROWS = 6   # 1行 = 緯度1.0°
+INSET_COLS = 16  # 1列 = 経度0.5°
+
 # ASCIIアート日本地図  ('#' = 陸地, ' ' = 海)
-# 行0 = 北 (緯度46°), 行32 = 南 (緯度30°)
-# 列0 = 西 (経度128°), 列44 = 東 (経度146°)
+# 行0 = 北 (緯度46°), 行32 = 南 (緯度30°) — 1行 = 緯度0.5°
+# 列0 = 西 (経度128°), 列44 = 東 (経度146°) — 1列 = 経度約0.41°
+# GeoJSON (dataofjapan/land) を各セル4x4サンプリングでラスタライズして生成
 JAPAN_MAP_RAW: list[str] = [
     #0         1         2         3         4
     #0123456789012345678901234567890123456789012345
-    "                                             ",  # 0  lat46.0
-    "                              ##             ",  # 1  45.5  稚内
-    "                             ####            ",  # 2  45.0
-    "                            #####  #         ",  # 3  44.5
-    "                           ########          ",  # 4  44.0  旭川
-    "                           ##########        ",  # 5  43.5  札幌
-    "                           ###########       ",  # 6  43.0  釧路
-    "                            #########        ",  # 7  42.5
-    "                            #####            ",  # 8  42.0  函館
-    "                                             ",  # 9  41.5  津軽海峡
-    "                            ###              ",  # 10 41.0  青森
-    "                           ####              ",  # 11 40.5  秋田/盛岡
-    "                          #####              ",  # 12 40.0
-    "                          #####              ",  # 13 39.5  山形/仙台
-    "                         ######              ",  # 14 39.0
-    "                        #######              ",  # 15 38.5  新潟/福島
-    "                       ########              ",  # 16 38.0
-    "                      #########              ",  # 17 37.5  長野
-    "                   ###########               ",  # 18 37.0  金沢
-    "                  ############               ",  # 19 36.5  関東
-    "                 #############               ",  # 20 36.0  東京
-    "               ############                  ",  # 21 35.5  名古屋
-    "          ###############                    ",  # 22 35.0  大阪
-    "     ###   ###########                       ",  # 23 34.5  九州北/四国
-    "      ##    #####  ##                        ",  # 24 34.0
-    "      ###   ####                             ",  # 25 33.5  福岡
-    "       ##                                    ",  # 26 33.0
-    "       ##                                    ",  # 27 32.5  熊本
-    "        #                                    ",  # 28 32.0
-    "        #                                    ",  # 29 31.5  鹿児島
-    "                                             ",  # 30 31.0
-    "  #                                          ",  # 31 30.5  沖縄(参考)
-    "                                             ",  # 32 30.0
+    "                                             ",  # 0  lat 45.75
+    "                               #####         ",  # 1  45.25 稚内
+    "                                 ####        ",  # 2  44.75
+    "                                 ####### ####",  # 3  44.25 知床/国後・択捉
+    "                                ############ ",  # 4  43.75 旭川
+    "                              #############  ",  # 5  43.25 札幌/釧路/根室
+    "                             ##########      ",  # 6  42.75 帯広
+    "                            ####   ###       ",  # 7  42.25 渡島半島/襟裳岬
+    "                             ###             ",  # 8  41.75 函館/下北半島
+    "                             ####            ",  # 9  41.25 津軽/下北
+    "                             ####            ",  # 10 40.75 青森
+    "                             #####           ",  # 11 40.25 八戸
+    "                            #######          ",  # 12 39.75 秋田/盛岡
+    "                             #####           ",  # 13 39.25 山形北部
+    "                            ######           ",  # 14 38.75 仙台/牡鹿半島
+    "                         #  #####            ",  # 15 38.25 佐渡/山形/宮城
+    "                         #######             ",  # 16 37.75 新潟/福島
+    "                     ## ########             ",  # 17 37.25 能登半島/会津
+    "                     ###########             ",  # 18 36.75 金沢/宇都宮
+    "            #      ############              ",  # 19 36.25 隠岐/長野/水戸
+    "            #  ################              ",  # 20 35.75 島根半島/東京/房総
+    "          #####################              ",  # 21 35.25 鳥取/名古屋/横浜
+    "         ###################                 ",  # 22 34.75 京阪神/伊豆半島
+    "   #   ###############                       ",  # 23 34.25 対馬/広島/紀伊半島
+    "     ###############                         ",  # 24 33.75 福岡/四国
+    # 右下: 沖縄インセット (lat 24-30 / lon 122.5-130.5, 枠内1行=1.0°)
+    "   ########## ##           ┌────────────────┐",  # 25 33.25 佐賀/大分/室戸岬
+    " #  ###### #               │              # │",  # 26 32.75 五島/長崎/熊本 | トカラ
+    "     ####                  │             ## │",  # 27 32.25 天草 | 奄美大島
+    "     ####                  │            #   │",  # 28 31.75 鹿児島/宮崎 | 徳之島・沖永良部
+    "     ###                   │        # ##    │",  # 29 31.25 薩摩・大隅 | 久米島・沖縄本島
+    "       #                   │                │",  # 30 30.75 大隅半島南端
+    "      #                    │# ## #          │",  # 31 30.25 屋久島 | 与那国・石垣・宮古
+    "                           └─沖縄───────────┘",  # 32 29.75 (沖縄は全角のため43文字=表示幅45)
 ]
 
 # 都道府県 → おおよその緯度経度 (地図プロット用)
@@ -111,17 +129,47 @@ PREF_COORDINATES: dict[str, tuple[float, float]] = {
 def latlon_to_grid(lat: float, lon: float) -> tuple[int, int] | None:
     """緯度経度をグリッド座標 (row, col) に変換
 
-    地図範囲外の場合は None を返す。
+    本土地図の範囲外でも沖縄インセットの範囲内ならインセット内の座標を返す。
+    どちらの範囲にも入らない場合は None を返す。
     """
-    if not (LAT_MIN <= lat <= LAT_MAX and LON_MIN <= lon <= LON_MAX):
-        return None
+    if LAT_MIN <= lat <= LAT_MAX and LON_MIN <= lon <= LON_MAX:
+        row = int((LAT_MAX - lat) / (LAT_MAX - LAT_MIN) * (MAP_HEIGHT - 1))
+        col = int((lon - LON_MIN) / (LON_MAX - LON_MIN) * (MAP_WIDTH - 1))
+        row = max(0, min(MAP_HEIGHT - 1, row))
+        col = max(0, min(MAP_WIDTH - 1, col))
+        return (row, col)
 
-    row = int((LAT_MAX - lat) / (LAT_MAX - LAT_MIN) * (MAP_HEIGHT - 1))
-    col = int((lon - LON_MIN) / (LON_MAX - LON_MIN) * (MAP_WIDTH - 1))
+    # lat=30.0ちょうどは本土側で処理されるため、インセットは 30.0 未満を受け持つ
+    if INSET_LAT_MIN <= lat < INSET_LAT_MAX and INSET_LON_MIN <= lon <= INSET_LON_MAX:
+        row = int((INSET_LAT_MAX - lat) / (INSET_LAT_MAX - INSET_LAT_MIN) * INSET_ROWS)
+        col = int((lon - INSET_LON_MIN) / (INSET_LON_MAX - INSET_LON_MIN) * INSET_COLS)
+        row = min(INSET_ROWS - 1, row)
+        col = min(INSET_COLS - 1, col)
+        return (INSET_ROW0 + row, INSET_COL0 + col)
 
-    row = max(0, min(MAP_HEIGHT - 1, row))
-    col = max(0, min(MAP_WIDTH - 1, col))
-    return (row, col)
+    return None
+
+
+def is_inset_cell(row: int, col: int) -> bool:
+    """沖縄インセット枠内 (枠線含む) のセルか判定"""
+    return row >= INSET_ROW0 - 1 and col >= INSET_COL0 - 1
+
+
+def grid_to_latlon(row: int, col: int) -> tuple[float, float]:
+    """本土グリッド座標を緯度経度に逆変換 (latlon_to_grid の逆写像)"""
+    lat = LAT_MAX - row / (MAP_HEIGHT - 1) * (LAT_MAX - LAT_MIN)
+    lon = LON_MIN + col / (MAP_WIDTH - 1) * (LON_MAX - LON_MIN)
+    return (lat, lon)
+
+
+def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """2地点間の大円距離 (km)"""
+    r = 6371.0
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    dp = p2 - p1
+    dl = math.radians(lon2 - lon1)
+    a = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
+    return 2 * r * math.asin(math.sqrt(a))
 
 
 def pref_to_grid(pref: str) -> tuple[int, int] | None:

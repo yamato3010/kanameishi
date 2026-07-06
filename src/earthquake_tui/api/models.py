@@ -35,6 +35,20 @@ SCALE_COLORS: dict[int, str] = {
     70: "white on dark_magenta",
 }
 
+# 震度スケール: API値 → HEXカラー (バッジ背景・枠線など Textual スタイル用)
+SCALE_HEX: dict[int, str] = {
+    -1: "#3a3a4a",
+    10: "#8a8a9a",
+    20: "#1e88ff",
+    30: "#43a047",
+    40: "#ffc832",
+    45: "#ff8c00",
+    50: "#ff4514",
+    55: "#e51e28",
+    60: "#e91e8c",
+    70: "#8c14a0",
+}
+
 # 津波情報
 TSUNAMI_LABELS: dict[str, str] = {
     "None": "なし",
@@ -56,9 +70,41 @@ def scale_color(scale: int) -> str:
     return SCALE_COLORS.get(scale, "dim")
 
 
+def scale_hex(scale: int) -> str:
+    """震度API値をHEXカラーに変換"""
+    return SCALE_HEX.get(scale, SCALE_HEX[-1])
+
+
 def tsunami_label(key: str) -> str:
     """津波キーを表示文字列に変換"""
     return TSUNAMI_LABELS.get(key, key)
+
+
+def parse_time(time_str: str) -> Optional[datetime]:
+    """'2026/07/06 15:20:00' 形式 (ミリ秒付きも可) の時刻をdatetimeに変換"""
+    try:
+        return datetime.strptime(time_str[:19], "%Y/%m/%d %H:%M:%S")
+    except ValueError:
+        return None
+
+
+def relative_time(time_str: str) -> str:
+    """'2026/07/06 15:20:00' 形式の時刻を「3分前」のような相対表記に変換"""
+    try:
+        dt = datetime.strptime(time_str[:19], "%Y/%m/%d %H:%M:%S")
+    except ValueError:
+        return ""
+    delta = datetime.now() - dt
+    seconds = int(delta.total_seconds())
+    if seconds < 0:
+        return ""
+    if seconds < 60:
+        return "たった今"
+    if seconds < 3600:
+        return f"{seconds // 60}分前"
+    if seconds < 86400:
+        return f"{seconds // 3600}時間前"
+    return f"{seconds // 86400}日前"
 
 
 @dataclass
@@ -178,6 +224,109 @@ class QuakeInfo:
     @property
     def longitude(self) -> float:
         return self.earthquake.hypocenter.longitude
+
+
+@dataclass
+class EEWArea:
+    """緊急地震速報の予報区"""
+    pref: str = ""
+    name: str = ""
+    scale_from: int = -1
+    scale_to: int = -1
+    kind_code: str = ""  # "10"=主要動未到達 / "11"=主要動到達済 / "19"=不明
+    arrival_time: str = ""  # 主要動到達予測時刻 (到達済・不明は空)
+
+    @classmethod
+    def from_dict(cls, data: dict) -> EEWArea:
+        return cls(
+            pref=data.get("pref", ""),
+            name=data.get("name", ""),
+            scale_from=data.get("scaleFrom", -1),
+            scale_to=data.get("scaleTo", -1),
+            kind_code=data.get("kindCode", ""),
+            arrival_time=data.get("arrivalTime") or "",
+        )
+
+    @property
+    def scale(self) -> int:
+        """表示用の予想震度 (scaleTo=99「〜程度以上」は下限値を使う)"""
+        if self.scale_to not in (-1, 99):
+            return self.scale_to
+        return self.scale_from
+
+    def seconds_until_arrival(self) -> Optional[int]:
+        """主要動到達までの残り秒数。到達済みは0以下、不明はNone"""
+        if self.kind_code == "11":
+            return 0
+        dt = parse_time(self.arrival_time)
+        if dt is None:
+            return None
+        return int((dt - datetime.now()).total_seconds())
+
+
+@dataclass
+class EEWInfo:
+    """緊急地震速報〔警報〕 (code: 556)"""
+    id: str = ""
+    code: int = 556
+    time: str = ""
+    test: bool = False
+    cancelled: bool = False
+    origin_time: str = ""
+    condition: str = ""
+    hypocenter: Hypocenter = field(default_factory=Hypocenter)
+    areas: list[EEWArea] = field(default_factory=list)
+
+    @classmethod
+    def from_dict(cls, data: dict) -> EEWInfo:
+        eq = data.get("earthquake") or {}
+        return cls(
+            id=data.get("id", data.get("_id", "")),
+            code=data.get("code", 556),
+            time=data.get("time", ""),
+            test=data.get("test", False),
+            cancelled=data.get("cancelled", False),
+            origin_time=eq.get("originTime", ""),
+            condition=eq.get("condition", ""),
+            hypocenter=Hypocenter.from_dict(eq.get("hypocenter") or {}),
+            areas=[EEWArea.from_dict(a) for a in data.get("areas") or []],
+        )
+
+    @property
+    def location(self) -> str:
+        return self.hypocenter.name or "不明"
+
+    @property
+    def magnitude(self) -> float:
+        return self.hypocenter.magnitude
+
+    @property
+    def depth(self) -> int:
+        return self.hypocenter.depth
+
+    @property
+    def latitude(self) -> float:
+        return self.hypocenter.latitude
+
+    @property
+    def longitude(self) -> float:
+        return self.hypocenter.longitude
+
+    @property
+    def max_expected_scale(self) -> int:
+        """予報区の予想震度の最大値"""
+        scales = [a.scale for a in self.areas]
+        return max(scales, default=-1)
+
+    def origin_datetime(self) -> Optional[datetime]:
+        return parse_time(self.origin_time)
+
+    def elapsed_seconds(self) -> Optional[float]:
+        """地震発生からの経過秒数"""
+        dt = self.origin_datetime()
+        if dt is None:
+            return None
+        return (datetime.now() - dt).total_seconds()
 
 
 @dataclass
