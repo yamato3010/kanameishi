@@ -6,7 +6,7 @@ from rich.text import Text
 from textual.widget import Widget
 from textual.reactive import reactive
 
-from ..api.models import QuakeInfo, scale_color
+from ..api.models import QuakeInfo, SCALE_NAMES, scale_color, scale_name
 from ..data.japan_map import (
     JAPAN_MAP_RAW,
     MAP_HEIGHT,
@@ -80,3 +80,14 @@ class JapanMapWidget(Widget):
     def update_quake(self, quake: QuakeInfo | None) -> None:
         """表示する地震情報を更新"""
         self.quake_data = quake
+
+
+def build_legend() -> Text:
+    """地図パネル下部に固定表示する凡例"""
+    text = Text()
+    text.append("★", style="bold bright_red")
+    text.append("震源 ", style="dim")
+    for s in sorted(k for k in SCALE_NAMES if k > 0):
+        text.append("●", style=f"bold {scale_color(s)}")
+        text.append(f"{scale_name(s)} ", style="dim")
+    return text

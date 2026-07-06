@@ -17,7 +17,7 @@ class IntensityBarWidget(Widget):
     DEFAULT_CSS = """
     IntensityBarWidget {
         height: auto;
-        min-height: 10;
+        min-height: 5;
         padding: 1 2;
     }
     """
@@ -42,8 +42,10 @@ class IntensityBarWidget(Widget):
             text.append("  データなし\n", style="dim")
             return text
 
-        max_count = max(counter.values()) if counter else 1
-        bar_max_width = 18
+        max_count = max(counter.values())
+        total = sum(counter.values())
+        # ウィジェット幅に合わせてバーを伸縮 (震度名+件数表示のぶんを引く)
+        bar_max_width = max(8, self.size.width - 16)
 
         # 大きい震度から表示
         scale_keys = sorted(
@@ -57,11 +59,12 @@ class IntensityBarWidget(Widget):
             name = scale_name(s).rjust(3)
             color = scale_color(s)
             bar_len = max(1, int(count / max_count * bar_max_width))
-            bar = "█" * bar_len
-            text.append(f"  {name} ", style="bold")
+            bar = "█" * bar_len + "▏"
+            text.append(f" {name} ", style="bold")
             text.append(f"{bar}", style=color)
             text.append(f" {count}\n", style="dim")
 
+        text.append(f"\n 計 {total}地点で観測\n", style="dim italic")
         return text
 
     def update_quake(self, quake: QuakeInfo | None) -> None:

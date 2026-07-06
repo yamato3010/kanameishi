@@ -34,21 +34,22 @@ class StatusBarWidget(Widget):
             ("D", "詳細"),
         ]
         for key, label in bindings:
-            text.append(f" [{key}]", style="bold cyan")
-            text.append(f" {label} ", style="dim")
+            text.append(f" {key} ", style="bold black on #3f3f5a")
+            text.append(f" {label}  ", style="dim")
 
-        # スペーサー
-        remaining = max(0, self.size.width - text.cell_len - 20)
-        text.append(" " * remaining)
-
-        # 最終更新
+        # 右側: データソース / 最終更新 / 接続状態
+        right = Text()
+        right.append("P2P地震情報", style="dim")
         if self.last_update:
-            text.append(f"更新: {self.last_update} ", style="dim")
-
-        # 接続状態
+            right.append("  │  ", style="#3f3f5a")
+            right.append(f"更新 {self.last_update}", style="dim")
+        right.append("  │  ", style="#3f3f5a")
         if self.ws_connected:
-            text.append(" 接続中 🟢", style="green")
+            right.append("● 接続中 ", style="bold #22c55e")
         else:
-            text.append(" 未接続 🔴", style="red")
+            right.append("● 再接続中... ", style="bold #f59e0b")
 
+        remaining = max(1, self.size.width - text.cell_len - right.cell_len)
+        text.append(" " * remaining)
+        text.append(right)
         return text

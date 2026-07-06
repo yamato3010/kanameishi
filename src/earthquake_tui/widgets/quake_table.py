@@ -27,7 +27,7 @@ class QuakeTableWidget(DataTable):
 
     def on_mount(self) -> None:
         self.add_columns(
-            "時刻", "震源地", "M", "最大震度", "津波"
+            "時刻", "震源地", "M", "深さ", "最大震度", "津波"
         )
 
     def update_quakes(self, quakes: list[QuakeInfo]) -> None:
@@ -44,6 +44,7 @@ class QuakeTableWidget(DataTable):
             time_str = (eq.time or q.time)[:16]
             location = hypo.name or "---"
             mag = f"{hypo.magnitude:.1f}" if hypo.magnitude > 0 else "---"
+            depth = f"{hypo.depth}km" if hypo.depth > 0 else ("浅い" if hypo.name else "---")
             max_s = Text(scale_name(eq.max_scale), style=scale_color(eq.max_scale))
             tsunami = tsunami_label(eq.domestic_tsunami)
 
@@ -51,6 +52,7 @@ class QuakeTableWidget(DataTable):
                 time_str,
                 location,
                 mag,
+                depth,
                 max_s,
                 tsunami,
             )

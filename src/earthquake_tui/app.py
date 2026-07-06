@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from datetime import datetime
 from pathlib import Path
@@ -14,8 +13,10 @@ from textual.binding import Binding
 
 from .api.client import P2PQuakeClient
 from .api.websocket import P2PQuakeWebSocket
-from .api.models import QuakeInfo, TsunamiInfo
-from .widgets.japan_map import JapanMapWidget
+from .api.models import QuakeInfo, TsunamiInfo, scale_hex
+from .widgets.header import HeaderWidget
+from .widgets.japan_map import JapanMapWidget, build_legend
+from .widgets.tsunami_panel import TsunamiPanelWidget
 from .widgets.quake_detail import QuakeDetailWidget
 from .widgets.quake_table import QuakeTableWidget
 from .widgets.intensity_bar import IntensityBarWidget
@@ -49,29 +50,35 @@ class EarthquakeApp(App):
         self._latest_quake: QuakeInfo | None = None
 
     def compose(self) -> ComposeResult:
-        # ヘッダー
-        yield Static("🔴 強震モニタ  ━  リアルタイム地震情報", id="app-header")
+        # ヘッダー + 津波警告バナー (通常は非表示)
+        yield HeaderWidget(id="app-header")
+        yield Static("", id="tsunami-banner")
 
         # メインコンテンツ
         with Horizontal(id="main-content"):
-            # 左: 日本地図
-            with Container(id="map-panel"):
-                yield Static("🗾 日本地図", id="map-panel-title")
+            # 左: 日本地図 (凡例は下部に固定)
+            with Container(id="map-panel") as map_panel:
+                map_panel.border_title = "🗾 日本地図"
                 yield JapanMapWidget(id="japan-map")
+                yield Static(build_legend(), id="map-legend")
 
-            # 右: 地震詳細 + 震度分布
+            # 右: 地震詳細 + 震度分布 + 津波情報
             with Vertical(id="info-panel"):
-                with Container(id="detail-panel"):
-                    yield Static("📋 最新地震情報", id="detail-panel-title")
+                with Container(id="detail-panel") as detail_panel:
+                    detail_panel.border_title = "📋 最新地震情報"
                     yield QuakeDetailWidget(id="quake-detail")
 
-                with Container(id="intensity-panel"):
-                    yield Static("📊 震度分布", id="intensity-panel-title")
+                with Container(id="intensity-panel") as intensity_panel:
+                    intensity_panel.border_title = "📊 震度分布"
                     yield IntensityBarWidget(id="intensity-bar")
 
+                with Container(id="tsunami-panel") as tsunami_panel:
+                    tsunami_panel.border_title = "🌊 津波情報"
+                    yield TsunamiPanelWidget(id="tsunami-info")
+
         # 下部: 地震履歴
-        with Container(id="history-panel"):
-            yield Static("📜 地震履歴", id="history-panel-title")
+        with Container(id="history-panel") as history_panel:
+            history_panel.border_title = "📜 地震履歴"
             yield QuakeTableWidget(id="quake-table")
 
         # ステータスバー
@@ -92,6 +99,12 @@ class EarthquakeApp(App):
 
         # 定期ポーリング (REST フォールバック)
         self.set_interval(POLL_INTERVAL, self._poll_data)
+
+        # 詳細パネルの相対時刻 (「n分前」) を定期更新
+        self.set_interval(30, self._refresh_detail)
+
+    def _refresh_detail(self) -> None:
+        self.query_one("#quake-detail", QuakeDetailWidget).refresh()
 
     async def on_unmount(self) -> None:
         """アプリ終了時のクリーンアップ"""
@@ -122,6 +135,14 @@ class EarthquakeApp(App):
         except Exception as e:
             log.error("初期データ取得エラー: %s", e)
             self.notify(f"データ取得エラー: {e}", severity="error", timeout=5)
+
+        # 発表中の津波予報があればバナー表示
+        try:
+            tsunamis = await self._client.get_tsunami_list(limit=1)
+            if tsunamis:
+                self._update_tsunami_banner(tsunamis[0])
+        except Exception as e:
+            log.warning("津波情報取得エラー: %s", e)
 
     async def _poll_data(self) -> None:
         """定期ポーリングでデータ更新"""
@@ -186,6 +207,7 @@ class EarthquakeApp(App):
 
     def _handle_tsunami(self, tsunami: TsunamiInfo) -> None:
         """津波情報を処理"""
+        self._update_tsunami_banner(tsunami)
         if not tsunami.cancelled:
             areas = ", ".join(a.name for a in tsunami.areas[:3])
             self.notify(
@@ -194,10 +216,29 @@ class EarthquakeApp(App):
                 timeout=15,
             )
 
+    def _update_tsunami_banner(self, tsunami: TsunamiInfo) -> None:
+        """津波予報バナー・津波パネルを更新"""
+        panel = self.query_one("#tsunami-info", TsunamiPanelWidget)
+        panel.update_tsunami(tsunami)
+
+        banner = self.query_one("#tsunami-banner", Static)
+        if tsunami.cancelled or not tsunami.areas:
+            banner.display = False
+            return
+
+        # 重複を除いた地域名 (先頭6件まで)
+        names = list(dict.fromkeys(a.name for a in tsunami.areas))
+        shown = "、".join(names[:6])
+        more = f" ほか{len(names) - 6}地域" if len(names) > 6 else ""
+        banner.update(f"🌊 津波予報 発表中 ─ {shown}{more}")
+        banner.display = True
+
     def _update_ws_status(self, connected: bool) -> None:
         """WebSocket接続状態UIを更新"""
         status_bar = self.query_one("#status-bar", StatusBarWidget)
         status_bar.ws_connected = connected
+        header = self.query_one("#app-header", HeaderWidget)
+        header.ws_connected = connected
 
     def _select_quake(self, quake: QuakeInfo) -> None:
         """地震を選択して詳細表示を更新"""
@@ -205,6 +246,10 @@ class EarthquakeApp(App):
 
         detail = self.query_one("#quake-detail", QuakeDetailWidget)
         detail.update_quake(quake)
+
+        # 詳細パネルの枠色を最大震度に連動させる
+        detail_panel = self.query_one("#detail-panel")
+        detail_panel.styles.border = ("round", scale_hex(quake.max_scale))
 
         japan_map = self.query_one("#japan-map", JapanMapWidget)
         japan_map.update_quake(quake)

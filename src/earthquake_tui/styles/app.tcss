@@ -1,20 +1,25 @@
 /* 強震モニタ TUI - Textual CSS スタイル */
 
 Screen {
-    background: rgb(12, 12, 20);
+    background: #0b0b14;
     layout: vertical;
 }
 
 /* ── ヘッダー ─────────────────── */
-#app-header {
-    dock: top;
-    height: 3;
-    background: rgb(25, 25, 35);
+HeaderWidget {
+    height: 2;
+    background: #14141f;
+    border-bottom: heavy #e51e28;
+}
+
+/* ── 津波警告バナー (発表中のみ表示) ── */
+#tsunami-banner {
+    height: 1;
+    display: none;
+    background: #e51e28;
     color: white;
-    text-align: center;
-    padding: 1 0;
     text-style: bold;
-    border-bottom: heavy rgb(200, 40, 40);
+    padding: 0 2;
 }
 
 /* ── メインコンテンツ ────────── */
@@ -22,112 +27,103 @@ Screen {
     layout: horizontal;
     height: 1fr;
     min-height: 16;
+    margin: 0 1;
 }
 
-/* 左パネル: 地図 */
+/* 左パネル: 地図 (地図45桁 + padding + 枠) */
 #map-panel {
-    width: 1fr;
-    min-width: 35;
-    border: round rgb(50, 60, 90);
-    background: rgb(15, 15, 25);
-    padding: 0;
+    width: 51;
+    min-width: 40;
+    border: round #2e2e48;
+    background: #10101c;
+    padding: 0 1;
     overflow-y: auto;
+    border-title-color: #8b8bb8;
+    border-title-style: bold;
 }
 
-#map-panel-title {
-    dock: top;
+#map-legend {
+    dock: bottom;
     height: 1;
+    background: #16162a;
     padding: 0 1;
-    background: rgb(30, 35, 55);
-    color: rgb(120, 140, 200);
-    text-style: bold;
 }
 
 /* 右パネル: 情報 */
 #info-panel {
-    width: 38;
-    min-width: 32;
-    max-width: 45;
+    width: 1fr;
+    min-width: 34;
     layout: vertical;
 }
 
 #detail-panel {
     height: auto;
-    max-height: 12;
-    border: round rgb(50, 60, 90);
-    background: rgb(15, 15, 25);
-}
-
-#detail-panel-title {
-    dock: top;
-    height: 1;
-    padding: 0 1;
-    background: rgb(30, 35, 55);
-    color: rgb(120, 140, 200);
-    text-style: bold;
+    min-height: 9;
+    border: round #2e2e48;
+    background: #10101c;
+    border-title-color: #8b8bb8;
+    border-title-style: bold;
 }
 
 #intensity-panel {
-    height: auto;
-    max-height: 14;
-    border: round rgb(50, 60, 90);
-    background: rgb(15, 15, 25);
+    height: 1fr;
+    min-height: 7;
+    border: round #2e2e48;
+    background: #10101c;
+    overflow-y: auto;
+    border-title-color: #8b8bb8;
+    border-title-style: bold;
 }
 
-#intensity-panel-title {
-    dock: top;
-    height: 1;
-    padding: 0 1;
-    background: rgb(30, 35, 55);
-    color: rgb(120, 140, 200);
-    text-style: bold;
+#tsunami-panel {
+    height: auto;
+    min-height: 4;
+    max-height: 10;
+    border: round #2e2e48;
+    background: #10101c;
+    overflow-y: auto;
+    border-title-color: #8b8bb8;
+    border-title-style: bold;
 }
 
 /* ── 下部パネル: 履歴 ──────── */
 #history-panel {
     height: auto;
-    max-height: 14;
-    min-height: 6;
-    border: round rgb(50, 60, 90);
-    background: rgb(15, 15, 25);
-}
-
-#history-panel-title {
-    dock: top;
-    height: 1;
-    padding: 0 1;
-    background: rgb(30, 35, 55);
-    color: rgb(120, 140, 200);
-    text-style: bold;
+    max-height: 13;
+    min-height: 8;
+    margin: 0 1;
+    border: round #2e2e48;
+    background: #10101c;
+    border-title-color: #8b8bb8;
+    border-title-style: bold;
 }
 
 QuakeTableWidget {
-    background: rgb(15, 15, 25);
+    background: #10101c;
 }
 
 QuakeTableWidget > .datatable--header {
-    background: rgb(30, 35, 55);
-    color: rgb(180, 190, 220);
+    background: #1c1c2e;
+    color: #a1a1c2;
     text-style: bold;
 }
 
 QuakeTableWidget > .datatable--cursor {
-    background: rgb(45, 50, 80);
+    background: #2d2d50;
     color: white;
     text-style: bold;
 }
 
 QuakeTableWidget > .datatable--even-row {
-    background: rgb(18, 18, 30);
+    background: #13131f;
 }
 
 QuakeTableWidget > .datatable--odd-row {
-    background: rgb(15, 15, 25);
+    background: #10101c;
 }
 
 /* ── ステータスバー ─────────── */
 StatusBarWidget {
-    background: rgb(20, 20, 32);
-    color: rgb(140, 150, 180);
-    border-top: heavy rgb(50, 60, 90);
+    background: #14141f;
+    color: #8b8bb8;
 }

@@ -35,6 +35,20 @@ SCALE_COLORS: dict[int, str] = {
     70: "white on dark_magenta",
 }
 
+# 震度スケール: API値 → HEXカラー (バッジ背景・枠線など Textual スタイル用)
+SCALE_HEX: dict[int, str] = {
+    -1: "#3a3a4a",
+    10: "#8a8a9a",
+    20: "#1e88ff",
+    30: "#43a047",
+    40: "#ffc832",
+    45: "#ff8c00",
+    50: "#ff4514",
+    55: "#e51e28",
+    60: "#e91e8c",
+    70: "#8c14a0",
+}
+
 # 津波情報
 TSUNAMI_LABELS: dict[str, str] = {
     "None": "なし",
@@ -56,9 +70,33 @@ def scale_color(scale: int) -> str:
     return SCALE_COLORS.get(scale, "dim")
 
 
+def scale_hex(scale: int) -> str:
+    """震度API値をHEXカラーに変換"""
+    return SCALE_HEX.get(scale, SCALE_HEX[-1])
+
+
 def tsunami_label(key: str) -> str:
     """津波キーを表示文字列に変換"""
     return TSUNAMI_LABELS.get(key, key)
+
+
+def relative_time(time_str: str) -> str:
+    """'2026/07/06 15:20:00' 形式の時刻を「3分前」のような相対表記に変換"""
+    try:
+        dt = datetime.strptime(time_str[:19], "%Y/%m/%d %H:%M:%S")
+    except ValueError:
+        return ""
+    delta = datetime.now() - dt
+    seconds = int(delta.total_seconds())
+    if seconds < 0:
+        return ""
+    if seconds < 60:
+        return "たった今"
+    if seconds < 3600:
+        return f"{seconds // 60}分前"
+    if seconds < 86400:
+        return f"{seconds // 3600}時間前"
+    return f"{seconds // 86400}日前"
 
 
 @dataclass
