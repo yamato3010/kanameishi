@@ -26,8 +26,6 @@ class IntensityBarWidget(Widget):
 
     def render(self) -> Text:
         text = Text()
-        text.append("  📊 震度分布\n", style="bold")
-        text.append("\n")
 
         quake = self.quake_data
         if quake is None or not quake.points:

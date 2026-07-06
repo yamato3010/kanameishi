@@ -136,22 +136,29 @@ class EarthquakeApp(App):
             log.warning("ポーリングエラー: %s", e)
 
     def _on_ws_quake(self, quake: QuakeInfo) -> None:
-        """WebSocketから地震情報を受信"""
-        self.call_from_thread(self._handle_new_quake, quake)
+        """WebSocketから地震情報を受信
+
+        WebSocket はアプリと同じイベントループ上のタスクで動くため直接呼べる。
+        """
+        self._handle_new_quake(quake)
 
     def _on_ws_tsunami(self, tsunami: TsunamiInfo) -> None:
         """WebSocketから津波情報を受信"""
-        self.call_from_thread(self._handle_tsunami, tsunami)
+        self._handle_tsunami(tsunami)
 
     def _on_ws_status(self, connected: bool) -> None:
         """WebSocket接続状態変更"""
-        self.call_from_thread(self._update_ws_status, connected)
+        self._update_ws_status(connected)
 
     def _handle_new_quake(self, quake: QuakeInfo) -> None:
         """新しい地震情報を処理"""
-        # リストの先頭に追加
-        self._quakes.insert(0, quake)
-        self._quakes = self._quakes[:50]  # 最大50件
+        # 同一地震の続報 (震度速報→震源情報→詳細) は既存行を置き換える
+        existing = self._find_same_quake(quake)
+        if existing is not None:
+            self._quakes[existing] = quake
+        else:
+            self._quakes.insert(0, quake)
+            self._quakes = self._quakes[:50]  # 最大50件
 
         table = self.query_one("#quake-table", QuakeTableWidget)
         table.update_quakes(self._quakes)
@@ -160,12 +167,22 @@ class EarthquakeApp(App):
         self._select_quake(quake)
         self._update_timestamp()
 
-        # 通知
+        # 通知 (震度速報はマグニチュード未定で -1 が入るため出さない)
+        mag = f" M{quake.magnitude:.1f}" if quake.magnitude > 0 else ""
         self.notify(
-            f"🔴 地震速報: {quake.location} M{quake.magnitude:.1f}",
+            f"🔴 地震速報: {quake.location}{mag}",
             severity="warning",
             timeout=10,
         )
+
+    def _find_same_quake(self, quake: QuakeInfo) -> int | None:
+        """同一地震の既存エントリを探す (発生時刻が一致すれば同一とみなす)"""
+        for i, q in enumerate(self._quakes):
+            if quake.id and q.id == quake.id:
+                return i
+            if quake.earthquake.time and q.earthquake.time == quake.earthquake.time:
+                return i
+        return None
 
     def _handle_tsunami(self, tsunami: TsunamiInfo) -> None:
         """津波情報を処理"""

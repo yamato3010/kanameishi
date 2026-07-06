@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from rich.text import Text
 from textual.widgets import DataTable
 from textual.reactive import reactive
 
@@ -30,7 +31,9 @@ class QuakeTableWidget(DataTable):
         )
 
     def update_quakes(self, quakes: list[QuakeInfo]) -> None:
-        """地震リストを更新"""
+        """地震リストを更新 (選択中の行は維持する)"""
+        selected = self.get_selected_quake()
+
         self._quake_list = quakes
         self.clear()
 
@@ -41,7 +44,7 @@ class QuakeTableWidget(DataTable):
             time_str = (eq.time or q.time)[:16]
             location = hypo.name or "---"
             mag = f"{hypo.magnitude:.1f}" if hypo.magnitude > 0 else "---"
-            max_s = scale_name(eq.max_scale)
+            max_s = Text(scale_name(eq.max_scale), style=scale_color(eq.max_scale))
             tsunami = tsunami_label(eq.domestic_tsunami)
 
             self.add_row(
@@ -51,6 +54,20 @@ class QuakeTableWidget(DataTable):
                 max_s,
                 tsunami,
             )
+
+        # 更新前に選択していた地震があればカーソルを復元
+        if selected is not None:
+            for i, q in enumerate(quakes):
+                if self._is_same_quake(q, selected):
+                    self.move_cursor(row=i)
+                    break
+
+    @staticmethod
+    def _is_same_quake(a: QuakeInfo, b: QuakeInfo) -> bool:
+        """同一地震かどうか (idまたは発生時刻の一致で判定)"""
+        if a.id and a.id == b.id:
+            return True
+        return bool(a.earthquake.time) and a.earthquake.time == b.earthquake.time
 
     def get_selected_quake(self) -> QuakeInfo | None:
         """現在選択中の地震情報を返す"""
