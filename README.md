@@ -17,6 +17,41 @@ P2P地震情報 API v2 を利用して、地震情報・津波予報をリアル
 
 ## インストール
 
+### グローバルインストール (推奨: pipx)
+
+`pipx` を使うと依存関係を専用の仮想環境に隔離したまま、`earthquake-tui` コマンドをどのディレクトリからでも実行できるようになります。
+
+```bash
+# pipx が未導入の場合 (初回のみ)
+brew install pipx
+pipx ensurepath  # PATH 追加。反映されない場合はターミナルを再起動
+
+# リポジトリのルートで実行
+pipx install .
+```
+
+アンインストールする場合:
+
+```bash
+pipx uninstall earthquake-tui
+```
+
+更新する場合 (コードを変更/pull した後):
+
+```bash
+pipx install . --force
+```
+
+### pipx を使わない場合
+
+```bash
+pip install --user .
+```
+
+### 開発用インストール (editable)
+
+コードを編集しながら動作確認したい場合はこちら。
+
 ```bash
 pip install -e .
 ```
@@ -24,10 +59,10 @@ pip install -e .
 ## 使い方
 
 ```bash
-# モジュールとして実行
+# モジュールとして実行 (editable インストール時など)
 python -m earthquake_tui
 
-# またはインストール後
+# グローバルインストール後はどこからでも実行可能
 earthquake-tui
 ```
 
