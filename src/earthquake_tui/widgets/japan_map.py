@@ -60,16 +60,19 @@ class JapanMapWidget(Widget):
         # 地震データがあればオーバーレイ
         quake = self.quake_data
         if quake is not None:
-            # 観測点をプロット
-            plotted: set[tuple[int, int]] = set()
+            # 観測点をプロット。1セルに複数の観測点・都道府県が載るため最大震度で塗る
+            cell_scale: dict[tuple[int, int], int] = {}
             for point in quake.points:
                 pos = pref_to_grid(point.pref)
-                if pos and pos not in plotted:
-                    r, c = pos
-                    if 0 <= r < MAP_HEIGHT and 0 <= c < MAP_WIDTH:
-                        color = scale_color(point.scale)
-                        grid[r][c] = ("●", f"bold {color}")
-                        plotted.add(pos)
+                if pos is None:
+                    continue
+                r, c = pos
+                if not (0 <= r < MAP_HEIGHT and 0 <= c < MAP_WIDTH):
+                    continue
+                if point.scale > cell_scale.get(pos, -1):
+                    cell_scale[pos] = point.scale
+            for (r, c), scale in cell_scale.items():
+                grid[r][c] = ("●", f"bold {scale_color(scale)}")
 
             # 震源をプロット (観測点と同セルの場合は震源を優先)
             if quake.latitude and quake.longitude:
