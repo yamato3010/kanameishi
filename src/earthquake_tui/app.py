@@ -31,6 +31,7 @@ from .widgets.quake_detail import QuakeDetailWidget
 from .widgets.quake_table import QuakeTableWidget
 from .widgets.intensity_bar import IntensityBarWidget
 from .widgets.status_bar import StatusBarWidget
+from .screens.about import AboutScreen
 
 log = logging.getLogger(__name__)
 
@@ -53,6 +54,7 @@ class EarthquakeApp(App):
         Binding("q", "quit", "終了", priority=True),
         Binding("r", "refresh", "更新"),
         Binding("d", "show_detail", "詳細"),
+        Binding("question_mark", "about", "情報"),
         Binding("e", "demo_eew", "EEWデモ", show=False),
     ]
 
@@ -404,6 +406,11 @@ class EarthquakeApp(App):
             areas=areas,
         )
         self._on_ws_eew(eew)
+
+    def action_about(self) -> None:
+        """「このアプリについて」を表示 (?キー)"""
+        if not isinstance(self.screen, AboutScreen):
+            self.push_screen(AboutScreen())
 
     def action_show_detail(self) -> None:
         """選択中の地震の詳細を表示"""

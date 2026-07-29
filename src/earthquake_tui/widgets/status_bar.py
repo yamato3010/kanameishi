@@ -32,6 +32,7 @@ class StatusBarWidget(Widget):
             ("R", "更新"),
             ("↑↓/JK", "選択"),
             ("D", "詳細"),
+            ("?", "情報"),
         ]
         for key, label in bindings:
             text.append(f" {key} ", style="bold black on #3f3f5a")
