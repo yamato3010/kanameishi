@@ -2,6 +2,18 @@
 
 インストール方法や使い方は [README.md](README.md) を参照してください。ここでは開発時のコミット規約とリリースの流れを説明します。
 
+## 名前の構成
+
+意図的に3種類の名前を使い分けています。
+
+| 種類 | 値 | 定義場所 |
+|---|---|---|
+| PyPI 配布名 | `kanameishi` | `pyproject.toml` の `project.name` |
+| import 名 (ディレクトリ) | `kanameishi` | `src/kanameishi/` |
+| 起動コマンド | `kaname` | `pyproject.toml` の `[project.scripts]` |
+
+コマンド名だけ短くしています。この差があるため、**`uvx kanameishi` は動きません**。`uvx` は既定でパッケージ名と同名の実行ファイルを探すので、`uvx --from kanameishi kaname` と指定する必要があります (`pipx run` も同様に `--spec` が必要)。`pipx install` / `uv tool install` は影響を受けません。
+
 ## バージョンの管理方針
 
 バージョンは **手で編集しません**。`main` にマージされたコミットメッセージから [release-please](https://github.com/googleapis/release-please) が次のバージョンを判定し、以下の3ファイルをまとめて更新します。
@@ -9,7 +21,7 @@
 | ファイル | 用途 |
 |---|---|
 | `pyproject.toml` | パッケージのバージョン |
-| `src/earthquake_tui/__init__.py` | `__version__` (アプリ内で参照) |
+| `src/kanameishi/__init__.py` | `__version__` (アプリ内で参照) |
 | `CHANGELOG.md` | 変更履歴 (自動生成) |
 
 `?` キーで開く「このアプリについて」画面は `__version__` を読んでいるため、リリースすると表示も自動で追従します。
@@ -36,35 +48,22 @@
 1. `feat:` / `fix:` を含む変更を `main` にマージする
 2. `.github/workflows/release-please.yml` が動き、**`chore(main): release X.Y.Z` というPRが自動で作られる**
 3. そのPRの差分を確認する (バージョン3ファイル + CHANGELOG.md が想定通りか)
-4. **PRをマージする** → タグ `vX.Y.Z` と GitHub Release が作成され、続けて `publish` ジョブが wheel / sdist をビルドして Release に添付する
+4. **PRをマージする** → タグ `vX.Y.Z` と GitHub Release が作成され、続けて `publish` ジョブが wheel / sdist をビルドして Release と PyPI に配布する
 
 リリースPRは、マージするまで後続のコミットに応じて中身が更新され続けます。「機能を数個まとめてから出す」場合は、マージせず放置しておけばよいです。逆に、`main` にマージした時点ではまだリリースされない点に注意してください。リリースはPRのマージが契機です。
 
-## Release に添付されるもの
+## 配布されるもの
 
-| 内容 | 生成元 |
+| 配布先 | 内容 |
 |---|---|
-| リリースノート (Features / Bug Fixes) | CHANGELOG.md から release-please が生成 |
-| `earthquake_tui-X.Y.Z-py3-none-any.whl` | ワークフローの `publish` ジョブ |
-| `earthquake_tui-X.Y.Z.tar.gz` (sdist) | ワークフローの `publish` ジョブ |
-| Source code (zip / tar.gz) | タグが打たれると GitHub が自動生成 |
+| PyPI | `kanameishi` パッケージ (`pipx install kanameishi` で入る) |
+| GitHub Release | リリースノート (CHANGELOG.md から生成) |
+| GitHub Release | `kanameishi-X.Y.Z-py3-none-any.whl` と `kanameishi-X.Y.Z.tar.gz` |
+| GitHub Release | Source code (zip / tar.gz) — タグが打たれると GitHub が自動生成 |
+
+`publish` ジョブは1回のビルド成果物を GitHub Release と PyPI の両方に配ります。**PyPI へのアップロードは最後**に実行します。取り消しが効かない操作なので、先に失敗しうる処理を済ませておく順序です。アップロード前に `twine check --strict` でメタデータを検証しています。
 
 リリースノートの見出しは release-please のデフォルトで英語 (`Features` / `Bug Fixes`) です。日本語にしたい場合は `release-please-config.json` に `changelog-sections` を追加して `{"type": "feat", "section": "新機能"}` のように指定します。
-
-## 利用者側の更新手順
-
-リポジトリを clone している場合:
-
-```bash
-git pull
-pipx install . --force
-```
-
-clone せず Release の wheel から直接入れる場合:
-
-```bash
-pipx install https://github.com/yamato3010/tui-earthquake-monitor/releases/download/vX.Y.Z/earthquake_tui-X.Y.Z-py3-none-any.whl
-```
 
 ## ローカルでビルドを確認する
 
@@ -79,7 +78,9 @@ python -m build
 
 > venv を `myenv/` `venv/` `env/` `.venv` 以外の名前でプロジェクト直下に作ると、sdist に venv が丸ごと混入して `AbsoluteLinkError` でビルドが失敗します。hatchling が参照するのは**ルートの `.gitignore` だけ**で、`python -m venv` が venv 内部に生成する `.gitignore` は読まれないためです。その名前をルートの `.gitignore` に追記すれば解消します。
 
-## 初回のみ必要なリポジトリ設定
+## 初回のみ必要な設定
+
+### 1. リポジトリ設定 (GitHub)
 
 release-please は GitHub Actions からPRを作るため、リポジトリ側で許可が必要です。**これを設定しないとワークフローが `GitHub Actions is not permitted to create or approve pull requests` で失敗します。**
 
@@ -87,6 +88,27 @@ Settings → Actions → General → Workflow permissions:
 
 - **Read and write permissions** を選択
 - **Allow GitHub Actions to create and approve pull requests** にチェック
+
+### 2. PyPI の Trusted Publishing 設定
+
+APIトークンは使いません。GitHub Actions の OIDC で認証するため、**PyPI 側に発行元リポジトリを登録**します。トークンを Secrets に置かずに済むので、漏洩リスクのある長期クレデンシャルを持ちません。
+
+`kanameishi` はまだ PyPI に存在しないので、**Pending publisher** として登録します。
+
+1. https://pypi.org/manage/account/publishing/ を開く
+2. 「Add a new pending publisher」に以下を入力
+
+| 項目 | 値 |
+|---|---|
+| PyPI Project Name | `kanameishi` |
+| Owner | `yamato3010` |
+| Repository name | `tui-earthquake-monitor` |
+| Workflow name | `release-please.yml` |
+| Environment name | (空欄) |
+
+初回の公開が成功すると PyPI 上にプロジェクトが作られ、pending publisher は通常の publisher に切り替わります。
+
+> より厳しくしたい場合は、GitHub 側に `pypi` という Environment を作って必須レビュアーを設定し、ワークフローの `publish` ジョブに `environment: pypi` を追加、PyPI 側の Environment name にも同じ名前を入れます。公開前に手動承認を挟めるようになりますが、名前が一致しないと失敗するので、必要になってからで構いません。
 
 ## 初回リリース後の後片付け
 
@@ -102,7 +124,17 @@ Settings → Actions → General → Workflow permissions:
 
 **バージョンが `pyproject.toml` だけ更新され `__init__.py` が変わらない**
 
-release-please は `pyproject.toml` の `project.name` (`earthquake-tui`) をハイフン→アンダースコアに変換して `src/earthquake_tui/__init__.py` を探します。パッケージ名を変えるときは `src/` 配下のディレクトリ名も合わせてください。
+release-please は `pyproject.toml` の `project.name` (`kanameishi`) をハイフン→アンダースコアに変換して `src/kanameishi/__init__.py` を探します。パッケージ名を変えるときは `src/` 配下のディレクトリ名も合わせてください。ここがずれると**エラーにならず片方だけ更新される**ため、About画面のバージョンが上がらなくなります。
+
+なお起動コマンド名 (`kaname`) は `[project.scripts]` で定義しているだけで、release-please の探索には関係ありません。コマンド名だけを変える場合、`src/` のディレクトリ名は触らないでください。
+
+**PyPI 公開が `invalid-publisher` で失敗する**
+
+PyPI 側の Trusted Publishing 設定と実際の実行内容が一致していません。Owner / Repository name / Workflow name (`release-please.yml`) / Environment name の4つを見比べてください。
+
+**PyPI 公開が `File already exists` で失敗する**
+
+同じバージョンを再アップロードしようとしています。PyPI はバージョン番号の再利用を許しません。`fix:` コミットを積んで次のバージョンとしてリリースし直してください。
 
 **CHANGELOG に `docs:` の変更も載せたい**
 

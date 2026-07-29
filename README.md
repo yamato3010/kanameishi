@@ -18,43 +18,53 @@ P2P地震情報 API v2 を利用して、地震情報・津波予報をリアル
 
 ## インストール
 
-### リリース版をインストール (clone 不要)
+### PyPI からインストール (推奨)
 
-[Releases](https://github.com/yamato3010/tui-earthquake-monitor/releases) には各バージョンの wheel が添付されています。URLを直接指定すれば、リポジトリを clone せずに導入できます。
-
-```bash
-# X.Y.Z は Releases ページで最新のバージョンに置き換えてください
-pipx install https://github.com/yamato3010/tui-earthquake-monitor/releases/download/vX.Y.Z/earthquake_tui-X.Y.Z-py3-none-any.whl
-```
-
-更新する場合は、新しいバージョンのURLを `--force` 付きで指定します。
-
-```bash
-pipx install <新しいバージョンのURL> --force
-```
-
-### グローバルインストール (推奨: pipx)
-
-`pipx` を使うと依存関係を専用の仮想環境に隔離したまま、`earthquake-tui` コマンドをどのディレクトリからでも実行できるようになります。
+パッケージ名は `kanameishi`、起動コマンドは `kaname` です。依存関係を専用の仮想環境に隔離したまま、どのディレクトリからでも実行できます。
 
 ```bash
 # pipx が未導入の場合 (初回のみ)
 brew install pipx
 pipx ensurepath  # PATH 追加。反映されない場合はターミナルを再起動
 
+pipx install kanameishi
+```
+
+`uv` を使っている場合:
+
+```bash
+uv tool install kanameishi
+```
+
+インストールせず一度だけ試す (コマンド名が違うため `--from` が必要):
+
+```bash
+uvx --from kanameishi kaname
+```
+
+更新・アンインストール:
+
+```bash
+pipx upgrade kanameishi
+pipx uninstall kanameishi
+```
+
+### Release の wheel を指定する
+
+バージョンを固定したい場合は、[Releases](https://github.com/yamato3010/tui-earthquake-monitor/releases) に添付された wheel を直接指定できます。
+
+```bash
+# X.Y.Z は Releases ページで最新のバージョンに置き換えてください
+pipx install https://github.com/yamato3010/tui-earthquake-monitor/releases/download/vX.Y.Z/kanameishi-X.Y.Z-py3-none-any.whl
+```
+
+### ソースからインストール
+
+```bash
 # リポジトリのルートで実行
 pipx install .
-```
 
-アンインストールする場合:
-
-```bash
-pipx uninstall earthquake-tui
-```
-
-更新する場合 (コードを変更/pull した後):
-
-```bash
+# 更新する場合 (コードを変更/pull した後)
 pipx install . --force
 ```
 
@@ -76,10 +86,10 @@ pip install -e .
 
 ```bash
 # モジュールとして実行 (editable インストール時など)
-python -m earthquake_tui
+python -m kanameishi
 
 # グローバルインストール後はどこからでも実行可能
-earthquake-tui
+kaname
 ```
 
 ## キーバインド
@@ -98,7 +108,7 @@ earthquake-tui
 - P2P地震情報の code 556 (緊急地震速報〔警報〕) を受信して表示します。警報級 (予想最大震度5弱以上) のみ配信されるため、実際に受信する機会はまれです
 - P波 (○) ・S波 (●) の到達予想円は定数速度 (P: 7km/s, S: 4km/s) による近似で、気象庁の走時表とは数秒ずれることがあります
 - `E` キーでデモ用のEEWを表示して動作を確認できます
-- 環境変数 `EQTUI_SANDBOX=1` を設定して起動すると、P2P地震情報の開発サンドボックスAPI (過去データの繰り返し配信) に接続します
+- 環境変数 `KANAME_SANDBOX=1` を設定して起動すると、P2P地震情報の開発サンドボックスAPI (過去データの繰り返し配信) に接続します
 
 ## 時刻の扱い
 
