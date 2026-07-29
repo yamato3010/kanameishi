@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from rich.cells import cell_len
 from rich.text import Text
 from textual.widget import Widget
 from textual.reactive import reactive
@@ -23,14 +24,31 @@ P_WAVE_SPEED = 7.0
 S_WAVE_SPEED = 4.0
 
 
+def plot_cell(
+    grid: list[list[tuple[str, str]]], r: int, c: int, ch: str, style: str
+) -> None:
+    """グリッドの1セルを書き換える (全角文字のセル対を壊さない)
+
+    「沖縄」ラベルのような幅2の文字に重なると行の表示幅が変わってしまうため、
+    対になるもう片方のセルを空白にして行の幅を保つ。
+    """
+    if grid[r][c][0] == "":             # 全角文字の後半セル
+        grid[r][c - 1] = (" ", "")
+    elif cell_len(grid[r][c][0]) == 2:  # 全角文字の前半セル
+        grid[r][c + 1] = (" ", "")
+    grid[r][c] = (ch, style)
+
+
 class JapanMapWidget(Widget):
     """ASCIIアート日本地図に地震情報をオーバーレイ表示"""
 
+    # 地図は MAP_WIDTH セル固定幅。幅が縮むと折り返して絵が崩れるため width を固定する
     DEFAULT_CSS = """
     JapanMapWidget {
+        width: 45;
         height: auto;
-        min-height: 35;
-        padding: 0 1;
+        min-height: 33;
+        padding: 0;
     }
     """
 
@@ -42,12 +60,11 @@ class JapanMapWidget(Widget):
         self._eew_timer = None
 
     def render(self) -> Text:
-        # 地図をグリッドにコピー
+        # 地図をグリッドにコピー (1要素 = 表示1セル。列番号とセル位置を一致させる)
         grid: list[list[tuple[str, str]]] = []
-        for row_idx, row_str in enumerate(JAPAN_MAP_RAW):
+        for row_str in JAPAN_MAP_RAW:
             row: list[tuple[str, str]] = []
-            padded = row_str.ljust(MAP_WIDTH)
-            for ch in padded:
+            for ch in row_str:
                 if ch == "#":
                     row.append(("░", "rgb(60,70,90)"))
                 elif ch == " ":
@@ -55,6 +72,11 @@ class JapanMapWidget(Widget):
                 else:
                     # 沖縄インセットの枠線・ラベルはそのまま描画
                     row.append((ch, "rgb(90,100,120)"))
+                if cell_len(ch) == 2:
+                    # 全角文字は2セル占めるため、後半セル分の空要素を足して列をずらさない
+                    row.append(("", ""))
+            # 文字数ではなく表示セル数で MAP_WIDTH に揃える
+            row.extend((" ", "") for _ in range(MAP_WIDTH - len(row)))
             grid.append(row)
 
         # 地震データがあればオーバーレイ
@@ -72,7 +94,7 @@ class JapanMapWidget(Widget):
                 if point.scale > cell_scale.get(pos, -1):
                     cell_scale[pos] = point.scale
             for (r, c), scale in cell_scale.items():
-                grid[r][c] = ("●", f"bold {scale_color(scale)}")
+                plot_cell(grid, r, c, "●", f"bold {scale_color(scale)}")
 
             # 震源をプロット (観測点と同セルの場合は震源を優先)
             if quake.latitude and quake.longitude:
@@ -80,7 +102,7 @@ class JapanMapWidget(Widget):
                 if pos:
                     r, c = pos
                     if 0 <= r < MAP_HEIGHT and 0 <= c < MAP_WIDTH:
-                        grid[r][c] = ("★", "bold bright_red")
+                        plot_cell(grid, r, c, "★", "bold bright_red")
 
         # 緊急地震速報があればP波・S波の到達予想円をオーバーレイ
         eew = self.eew_data
@@ -139,7 +161,7 @@ class JapanMapWidget(Widget):
                         if 0 <= nr < MAP_HEIGHT and 0 <= nc < MAP_WIDTH:
                             nd = dist[nr][nc]
                             if nd is not None and nd > radius:
-                                grid[r][c] = (ch, style)
+                                plot_cell(grid, r, c, ch, style)
                                 break
 
         # 震央
@@ -147,7 +169,7 @@ class JapanMapWidget(Widget):
         if pos:
             r, c = pos
             if 0 <= r < MAP_HEIGHT and 0 <= c < MAP_WIDTH:
-                grid[r][c] = ("✕", "bold bright_red blink")
+                plot_cell(grid, r, c, "✕", "bold bright_red blink")
 
     def update_quake(self, quake: QuakeInfo | None) -> None:
         """表示する地震情報を更新"""
