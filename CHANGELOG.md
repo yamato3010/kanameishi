@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.1](https://github.com/yamato3010/kanameishi/compare/v0.2.0...v0.2.1) (2026-07-29)
+
+
+### Bug Fixes
+
+* 🐛 アプリ名をKanameishiに ([cb1d8c1](https://github.com/yamato3010/kanameishi/commit/cb1d8c1246b40eaa0e70e4485a129f86912df75f))
+* 🐛 アプリ名をKanameishiに ([1f2bd1e](https://github.com/yamato3010/kanameishi/commit/1f2bd1ee7405615efe138c9dd918d07004f7a35c))
+
 ## [0.2.0](https://github.com/yamato3010/kanameishi/compare/v0.1.0...v0.2.0) (2026-07-29)
 
 
