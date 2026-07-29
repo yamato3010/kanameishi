@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import httpx
 
+from .. import __version__
 from .models import QuakeInfo, TsunamiInfo
 
 BASE_URL = "https://api.p2pquake.net/v2"
@@ -16,7 +17,7 @@ class P2PQuakeClient:
         self._client = httpx.AsyncClient(
             base_url=BASE_URL,
             timeout=15.0,
-            headers={"User-Agent": "earthquake-tui/0.1.0"},
+            headers={"User-Agent": f"kanameishi/{__version__}"},
         )
 
     async def close(self) -> None:

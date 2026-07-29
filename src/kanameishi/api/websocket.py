@@ -37,8 +37,8 @@ class P2PQuakeWebSocket:
         self._on_eew: Optional[Callable[[EEWInfo], None]] = None
         self._on_status: Optional[Callable[[bool], None]] = None
         self._reconnect_delay = RECONNECT_DELAY
-        # EQTUI_SANDBOX=1 でサンドボックスAPIに接続 (EEW動作確認用)
-        self._url = SANDBOX_WS_URL if os.environ.get("EQTUI_SANDBOX") else WS_URL
+        # KANAME_SANDBOX=1 でサンドボックスAPIに接続 (EEW動作確認用)
+        self._url = SANDBOX_WS_URL if os.environ.get("KANAME_SANDBOX") else WS_URL
 
     def on_quake(self, callback: Callable[[QuakeInfo], None]) -> None:
         self._on_quake = callback

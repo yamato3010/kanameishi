@@ -5,6 +5,12 @@ Screen {
     layout: vertical;
 }
 
+/* 「このアプリについて」モーダル。背後のメイン画面を透過させるため、
+   上の Screen ルール (不透明) をここで打ち消す */
+AboutScreen {
+    background: #0b0b14 60%;
+}
+
 /* ── ヘッダー ─────────────────── */
 HeaderWidget {
     height: 2;
@@ -40,7 +46,7 @@ HeaderWidget {
     margin: 0 1;
 }
 
-/* 左パネル: 地図 (地図45桁 + padding + 枠) */
+/* 左パネル: 地図 (地図45桁 + padding + 枠 + 縦スクロールバー1桁) */
 #map-panel {
     width: 51;
     min-width: 40;
@@ -48,6 +54,7 @@ HeaderWidget {
     background: #10101c;
     padding: 0 1;
     overflow-y: auto;
+    scrollbar-size-vertical: 1;
     border-title-color: #8b8bb8;
     border-title-style: bold;
 }

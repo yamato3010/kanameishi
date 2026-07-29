@@ -3,8 +3,17 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import Optional
+
+
+# P2P地震情報APIが返す時刻はすべて日本標準時。端末のタイムゾーンに依存しないよう固定する
+JST = timezone(timedelta(hours=9))
+
+
+def now_jst() -> datetime:
+    """現在時刻 (JST)"""
+    return datetime.now(JST)
 
 
 # 震度スケール: API値 → 表示文字列
@@ -81,20 +90,20 @@ def tsunami_label(key: str) -> str:
 
 
 def parse_time(time_str: str) -> Optional[datetime]:
-    """'2026/07/06 15:20:00' 形式 (ミリ秒付きも可) の時刻をdatetimeに変換"""
+    """'2026/07/06 15:20:00' 形式 (ミリ秒付きも可) のJST時刻をdatetimeに変換"""
     try:
-        return datetime.strptime(time_str[:19], "%Y/%m/%d %H:%M:%S")
+        dt = datetime.strptime(time_str[:19], "%Y/%m/%d %H:%M:%S")
     except ValueError:
         return None
+    return dt.replace(tzinfo=JST)
 
 
 def relative_time(time_str: str) -> str:
     """'2026/07/06 15:20:00' 形式の時刻を「3分前」のような相対表記に変換"""
-    try:
-        dt = datetime.strptime(time_str[:19], "%Y/%m/%d %H:%M:%S")
-    except ValueError:
+    dt = parse_time(time_str)
+    if dt is None:
         return ""
-    delta = datetime.now() - dt
+    delta = now_jst() - dt
     seconds = int(delta.total_seconds())
     if seconds < 0:
         return ""
@@ -261,7 +270,7 @@ class EEWArea:
         dt = parse_time(self.arrival_time)
         if dt is None:
             return None
-        return int((dt - datetime.now()).total_seconds())
+        return int((dt - now_jst()).total_seconds())
 
 
 @dataclass
@@ -326,7 +335,7 @@ class EEWInfo:
         dt = self.origin_datetime()
         if dt is None:
             return None
-        return (datetime.now() - dt).total_seconds()
+        return (now_jst() - dt).total_seconds()
 
 
 @dataclass

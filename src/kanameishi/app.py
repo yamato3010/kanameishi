@@ -19,6 +19,7 @@ from .api.models import (
     Hypocenter,
     QuakeInfo,
     TsunamiInfo,
+    now_jst,
     scale_hex,
     scale_name,
 )
@@ -30,6 +31,7 @@ from .widgets.quake_detail import QuakeDetailWidget
 from .widgets.quake_table import QuakeTableWidget
 from .widgets.intensity_bar import IntensityBarWidget
 from .widgets.status_bar import StatusBarWidget
+from .screens.about import AboutScreen
 
 log = logging.getLogger(__name__)
 
@@ -52,6 +54,7 @@ class EarthquakeApp(App):
         Binding("q", "quit", "終了", priority=True),
         Binding("r", "refresh", "更新"),
         Binding("d", "show_detail", "詳細"),
+        Binding("question_mark", "about", "情報"),
         Binding("e", "demo_eew", "EEWデモ", show=False),
     ]
 
@@ -89,7 +92,7 @@ class EarthquakeApp(App):
                     yield QuakeDetailWidget(id="quake-detail")
 
                 with Container(id="intensity-panel") as intensity_panel:
-                    intensity_panel.border_title = "📊 震度分布"
+                    intensity_panel.border_title = "📊 震度分布・観測地点"
                     yield IntensityBarWidget(id="intensity-bar")
 
                 with Container(id="tsunami-panel") as tsunami_panel:
@@ -199,7 +202,7 @@ class EarthquakeApp(App):
             return
 
         self._eew = eew
-        self._eew_received_at = datetime.now()
+        self._eew_received_at = now_jst()
 
         # 地図に到達予想円、パネルにカウントダウンを表示
         self.query_one("#japan-map", JapanMapWidget).update_eew(eew)
@@ -237,7 +240,7 @@ class EarthquakeApp(App):
             return
         elapsed = self._eew.elapsed_seconds()
         if elapsed is None and self._eew_received_at is not None:
-            elapsed = (datetime.now() - self._eew_received_at).total_seconds()
+            elapsed = (now_jst() - self._eew_received_at).total_seconds()
         if elapsed is not None and elapsed > EEW_DISPLAY_SECONDS:
             self._clear_eew()
 
@@ -247,28 +250,37 @@ class EarthquakeApp(App):
 
     def _handle_new_quake(self, quake: QuakeInfo) -> None:
         """新しい地震情報を処理"""
+        table = self.query_one("#quake-table", QuakeTableWidget)
+        # 履歴を遡って閲覧中 (先頭以外を選択中) なら詳細表示を奪わない
+        following = not self._quakes or table.cursor_row in (0, None)
+
         # 同一地震の続報 (震度速報→震源情報→詳細) は既存行を置き換える
         existing = self._find_same_quake(quake)
         if existing is not None:
+            previous_scale = self._quakes[existing].max_scale
             self._quakes[existing] = quake
         else:
+            previous_scale = -1
             self._quakes.insert(0, quake)
             self._quakes = self._quakes[:50]  # 最大50件
 
-        table = self.query_one("#quake-table", QuakeTableWidget)
         table.update_quakes(self._quakes)
 
-        # 詳細表示を更新
-        self._select_quake(quake)
+        # 詳細表示を更新 (最新を追従中のみ)
+        if following:
+            table.move_cursor(row=0)
+            self._select_quake(self._quakes[0])
         self._update_timestamp()
 
-        # 通知 (震度速報はマグニチュード未定で -1 が入るため出さない)
-        mag = f" M{quake.magnitude:.1f}" if quake.magnitude > 0 else ""
-        self.notify(
-            f"🔴 地震速報: {quake.location}{mag}",
-            severity="warning",
-            timeout=10,
-        )
+        # 通知 (続報は震度が上がったときだけ再通知する)
+        if existing is None or quake.max_scale > previous_scale:
+            # 震度速報はマグニチュード未定で -1 が入るため省略する
+            mag = f" M{quake.magnitude:.1f}" if quake.magnitude > 0 else ""
+            self.notify(
+                f"🔴 地震速報: {quake.location}{mag} 最大震度{quake.max_scale_name}",
+                severity="warning",
+                timeout=10,
+            )
 
     def _find_same_quake(self, quake: QuakeInfo) -> int | None:
         """同一地震の既存エントリを探す (発生時刻が一致すれば同一とみなす)"""
@@ -333,7 +345,7 @@ class EarthquakeApp(App):
 
     def _update_timestamp(self) -> None:
         """最終更新時刻を更新"""
-        now = datetime.now().strftime("%H:%M:%S")
+        now = now_jst().strftime("%H:%M:%S")
         status_bar = self.query_one("#status-bar", StatusBarWidget)
         status_bar.last_update = now
 
@@ -347,7 +359,7 @@ class EarthquakeApp(App):
         """デモ用の緊急地震速報を発生させる (eキー、動作確認用)"""
         from .data.japan_map import PREF_COORDINATES, haversine_km
 
-        now = datetime.now()
+        now = now_jst()
         origin = now - timedelta(seconds=3)
         hypo_lat, hypo_lon, depth = 33.6, 136.3, 30
 
@@ -394,6 +406,11 @@ class EarthquakeApp(App):
             areas=areas,
         )
         self._on_ws_eew(eew)
+
+    def action_about(self) -> None:
+        """「このアプリについて」を表示 (?キー)"""
+        if not isinstance(self.screen, AboutScreen):
+            self.push_screen(AboutScreen())
 
     def action_show_detail(self) -> None:
         """選択中の地震の詳細を表示"""

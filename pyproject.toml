@@ -3,11 +3,20 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "earthquake-tui"
+name = "kanameishi"
 version = "0.1.0"
 description = "強震モニタ TUI - ターミナルで動くリアルタイム地震情報モニター"
 readme = "README.md"
 requires-python = ">=3.9"
+license = "MIT"
+license-files = ["LICENSE"]
+keywords = ["earthquake", "tui", "terminal", "japan", "p2pquake", "eew"]
+classifiers = [
+    "Environment :: Console",
+    "Natural Language :: Japanese",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering",
+]
 dependencies = [
     "textual>=0.79.0",
     "rich>=13.0.0",
@@ -15,5 +24,10 @@ dependencies = [
     "websockets>=12.0",
 ]
 
+[project.urls]
+Homepage = "https://github.com/yamato3010/kanameishi"
+Repository = "https://github.com/yamato3010/kanameishi"
+Changelog = "https://github.com/yamato3010/kanameishi/blob/main/CHANGELOG.md"
+
 [project.scripts]
-earthquake-tui = "earthquake_tui.__main__:main"
+kaname = "kanameishi.__main__:main"

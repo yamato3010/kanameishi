@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from datetime import datetime
-
 from rich.text import Text
 from textual.widget import Widget
 from textual.reactive import reactive
+
+from ..api.models import now_jst
 
 WEEKDAYS_JA = ["月", "火", "水", "木", "金", "土", "日"]
 
@@ -29,9 +29,9 @@ class HeaderWidget(Widget):
         self.set_interval(1, self._tick)
 
     def _tick(self) -> None:
-        now = datetime.now()
+        now = now_jst()
         wd = WEEKDAYS_JA[now.weekday()]
-        self.clock = now.strftime(f"%Y/%m/%d ({wd}) %H:%M:%S")
+        self.clock = now.strftime(f"%Y/%m/%d ({wd}) %H:%M:%S JST")
 
     def render(self) -> Text:
         text = Text()
