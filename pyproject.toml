@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "kanameishi"
-version = "0.2.0"
+version = "0.2.1"
 description = "Kanameishi - ターミナルで動くリアルタイム地震情報モニター"
 readme = "README.md"
 requires-python = ">=3.9"
