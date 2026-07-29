@@ -12,7 +12,7 @@ from textual.widgets import Static
 
 from .. import __version__
 
-APP_NAME = "強震モニタ TUI"
+APP_NAME = "Kanameishi(要石)"
 APP_DESCRIPTION = "ターミナルで動くリアルタイム地震情報モニター"
 
 # ラベルと値 (値は右側で桁を揃えて表示する)

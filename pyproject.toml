@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "kanameishi"
 version = "0.2.0"
-description = "強震モニタ TUI - ターミナルで動くリアルタイム地震情報モニター"
+description = "Kanameishi - ターミナルで動くリアルタイム地震情報モニター"
 readme = "README.md"
 requires-python = ">=3.9"
 license = "MIT"

@@ -1,4 +1,4 @@
-"""強震モニタ TUI - メインアプリケーション"""
+"""Kanameishi - メインアプリケーション"""
 
 from __future__ import annotations
 
@@ -45,9 +45,9 @@ EEW_DISPLAY_SECONDS = 180
 
 
 class EarthquakeApp(App):
-    """強震モニタ TUI アプリケーション"""
+    """Kanameishi アプリケーション"""
 
-    TITLE = "強震モニタ"
+    TITLE = "Kanameishi"
     CSS_PATH = CSS_PATH
 
     BINDINGS = [
