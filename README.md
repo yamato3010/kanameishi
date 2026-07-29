@@ -18,6 +18,21 @@ P2P地震情報 API v2 を利用して、地震情報・津波予報をリアル
 
 ## インストール
 
+### リリース版をインストール (clone 不要)
+
+[Releases](https://github.com/yamato3010/tui-earthquake-monitor/releases) には各バージョンの wheel が添付されています。URLを直接指定すれば、リポジトリを clone せずに導入できます。
+
+```bash
+# X.Y.Z は Releases ページで最新のバージョンに置き換えてください
+pipx install https://github.com/yamato3010/tui-earthquake-monitor/releases/download/vX.Y.Z/earthquake_tui-X.Y.Z-py3-none-any.whl
+```
+
+更新する場合は、新しいバージョンのURLを `--force` 付きで指定します。
+
+```bash
+pipx install <新しいバージョンのURL> --force
+```
+
 ### グローバルインストール (推奨: pipx)
 
 `pipx` を使うと依存関係を専用の仮想環境に隔離したまま、`earthquake-tui` コマンドをどのディレクトリからでも実行できるようになります。

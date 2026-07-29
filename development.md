@@ -36,16 +36,48 @@
 1. `feat:` / `fix:` を含む変更を `main` にマージする
 2. `.github/workflows/release-please.yml` が動き、**`chore(main): release X.Y.Z` というPRが自動で作られる**
 3. そのPRの差分を確認する (バージョン3ファイル + CHANGELOG.md が想定通りか)
-4. **PRをマージする** → タグ `vX.Y.Z` と GitHub Release が自動作成される
+4. **PRをマージする** → タグ `vX.Y.Z` と GitHub Release が作成され、続けて `publish` ジョブが wheel / sdist をビルドして Release に添付する
 
 リリースPRは、マージするまで後続のコミットに応じて中身が更新され続けます。「機能を数個まとめてから出す」場合は、マージせず放置しておけばよいです。逆に、`main` にマージした時点ではまだリリースされない点に注意してください。リリースはPRのマージが契機です。
 
-リリース後、利用者側の更新手順:
+## Release に添付されるもの
+
+| 内容 | 生成元 |
+|---|---|
+| リリースノート (Features / Bug Fixes) | CHANGELOG.md から release-please が生成 |
+| `earthquake_tui-X.Y.Z-py3-none-any.whl` | ワークフローの `publish` ジョブ |
+| `earthquake_tui-X.Y.Z.tar.gz` (sdist) | ワークフローの `publish` ジョブ |
+| Source code (zip / tar.gz) | タグが打たれると GitHub が自動生成 |
+
+リリースノートの見出しは release-please のデフォルトで英語 (`Features` / `Bug Fixes`) です。日本語にしたい場合は `release-please-config.json` に `changelog-sections` を追加して `{"type": "feat", "section": "新機能"}` のように指定します。
+
+## 利用者側の更新手順
+
+リポジトリを clone している場合:
 
 ```bash
 git pull
 pipx install . --force
 ```
+
+clone せず Release の wheel から直接入れる場合:
+
+```bash
+pipx install https://github.com/yamato3010/tui-earthquake-monitor/releases/download/vX.Y.Z/earthquake_tui-X.Y.Z-py3-none-any.whl
+```
+
+## ローカルでビルドを確認する
+
+CI と同じ成果物を手元で作れます。
+
+```bash
+python -m pip install build
+python -m build
+```
+
+`dist/` に wheel と sdist ができます。
+
+> venv を `myenv/` `venv/` `env/` `.venv` 以外の名前でプロジェクト直下に作ると、sdist に venv が丸ごと混入して `AbsoluteLinkError` でビルドが失敗します。hatchling が参照するのは**ルートの `.gitignore` だけ**で、`python -m venv` が venv 内部に生成する `.gitignore` は読まれないためです。その名前をルートの `.gitignore` に追記すれば解消します。
 
 ## 初回のみ必要なリポジトリ設定
 
