@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from rich.text import Text
+from textual.binding import Binding
 from textual.widgets import DataTable
 from textual.reactive import reactive
 
@@ -11,6 +12,14 @@ from ..api.models import QuakeInfo, scale_name, scale_color, tsunami_label
 
 class QuakeTableWidget(DataTable):
     """地震履歴を一覧表示するDataTable"""
+
+    # 矢印キー (DataTable標準) に加えて vim 風の hjkl でも操作できるようにする
+    BINDINGS = [
+        Binding("k", "cursor_up", "上へ", show=False),
+        Binding("j", "cursor_down", "下へ", show=False),
+        Binding("h", "cursor_left", "左へ", show=False),
+        Binding("l", "cursor_right", "右へ", show=False),
+    ]
 
     DEFAULT_CSS = """
     QuakeTableWidget {

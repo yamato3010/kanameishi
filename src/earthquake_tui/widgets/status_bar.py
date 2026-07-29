@@ -30,7 +30,7 @@ class StatusBarWidget(Widget):
         bindings = [
             ("Q", "終了"),
             ("R", "更新"),
-            ("↑↓", "選択"),
+            ("↑↓/JK", "選択"),
             ("D", "詳細"),
         ]
         for key, label in bindings:
