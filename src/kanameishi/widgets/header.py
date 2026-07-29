@@ -36,7 +36,7 @@ class HeaderWidget(Widget):
     def render(self) -> Text:
         text = Text()
         text.append(" ▌", style="bold #e51e28")
-        text.append("強震モニタ ", style="bold white")
+        text.append("Kanameishi ", style="bold white")
         text.append("─ リアルタイム地震情報", style="dim")
 
         if self.ws_connected:

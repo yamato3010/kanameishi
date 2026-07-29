@@ -1,4 +1,4 @@
-"""強震モニタ TUI - エントリーポイント"""
+"""Kanameishi - エントリーポイント"""
 
 from .app import EarthquakeApp
 
