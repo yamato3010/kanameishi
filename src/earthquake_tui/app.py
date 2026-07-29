@@ -89,7 +89,7 @@ class EarthquakeApp(App):
                     yield QuakeDetailWidget(id="quake-detail")
 
                 with Container(id="intensity-panel") as intensity_panel:
-                    intensity_panel.border_title = "📊 震度分布"
+                    intensity_panel.border_title = "📊 震度分布・観測地点"
                     yield IntensityBarWidget(id="intensity-bar")
 
                 with Container(id="tsunami-panel") as tsunami_panel:
