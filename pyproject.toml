@@ -25,9 +25,9 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/yamato3010/tui-earthquake-monitor"
-Repository = "https://github.com/yamato3010/tui-earthquake-monitor"
-Changelog = "https://github.com/yamato3010/tui-earthquake-monitor/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/yamato3010/kanameishi"
+Repository = "https://github.com/yamato3010/kanameishi"
+Changelog = "https://github.com/yamato3010/kanameishi/blob/main/CHANGELOG.md"
 
 [project.scripts]
 kaname = "kanameishi.__main__:main"

@@ -51,11 +51,11 @@ pipx uninstall kanameishi
 
 ### Release の wheel を指定する
 
-バージョンを固定したい場合は、[Releases](https://github.com/yamato3010/tui-earthquake-monitor/releases) に添付された wheel を直接指定できます。
+バージョンを固定したい場合は、[Releases](https://github.com/yamato3010/kanameishi/releases) に添付された wheel を直接指定できます。
 
 ```bash
 # X.Y.Z は Releases ページで最新のバージョンに置き換えてください
-pipx install https://github.com/yamato3010/tui-earthquake-monitor/releases/download/vX.Y.Z/kanameishi-X.Y.Z-py3-none-any.whl
+pipx install https://github.com/yamato3010/kanameishi/releases/download/vX.Y.Z/kanameishi-X.Y.Z-py3-none-any.whl
 ```
 
 ### ソースからインストール

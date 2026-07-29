@@ -102,7 +102,7 @@ APIトークンは使いません。GitHub Actions の OIDC で認証するた�
 |---|---|
 | PyPI Project Name | `kanameishi` |
 | Owner | `yamato3010` |
-| Repository name | `tui-earthquake-monitor` |
+| Repository name | `kanameishi` |
 | Workflow name | `release-please.yml` |
 | Environment name | (空欄) |
 
@@ -131,6 +131,8 @@ release-please は `pyproject.toml` の `project.name` (`kanameishi`) をハイ�
 **PyPI 公開が `invalid-publisher` で失敗する**
 
 PyPI 側の Trusted Publishing 設定と実際の実行内容が一致していません。Owner / Repository name / Workflow name (`release-please.yml`) / Environment name の4つを見比べてください。
+
+よくある原因は**GitHub のリポジトリ名やアカウント名を変更した**ことです。Trusted Publishing の設定はリポジトリ名に紐づいており、GitHub 側のリダイレクトでは救われません。リネームしたら PyPI 側の publisher 設定も更新してください。
 
 **PyPI 公開が `File already exists` で失敗する**
 
