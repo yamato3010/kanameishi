@@ -12,12 +12,17 @@ import os
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
+from .data.japan_map import PREF_COORDINATES
+
 log = logging.getLogger(__name__)
 
 # 通知しきい値として選択できる震度 (models.SCALE_NAMES のうち「不明」を除いたもの)
 SELECTABLE_SCALES: list[int] = [10, 20, 30, 40, 45, 50, 55, 60, 70]
 
 DEFAULT_MIN_SCALE = 40  # 震度4
+
+# 「自分の地域」として選択できる都道府県 (北から南の順)
+PREFECTURES: list[str] = list(PREF_COORDINATES)
 
 
 def config_dir() -> Path:
@@ -41,6 +46,7 @@ class NotifyConfig:
     sound: bool = True
     eew_always: bool = True
     tsunami_always: bool = True
+    region_always: bool = True
 
     @classmethod
     def from_dict(cls, data: dict) -> NotifyConfig:
@@ -56,6 +62,7 @@ class NotifyConfig:
             sound=bool(data.get("sound", default.sound)),
             eew_always=bool(data.get("eew_always", default.eew_always)),
             tsunami_always=bool(data.get("tsunami_always", default.tsunami_always)),
+            region_always=bool(data.get("region_always", default.region_always)),
         )
 
 
@@ -64,6 +71,7 @@ class Config:
     """アプリ設定"""
 
     notify: NotifyConfig = field(default_factory=NotifyConfig)
+    region: str = ""  # 「自分の地域」の都道府県名 (空文字なら未設定)
 
     @classmethod
     def load(cls) -> Config:
@@ -83,12 +91,24 @@ class Config:
             return cls()
 
         notify = data.get("notify")
-        return cls(NotifyConfig.from_dict(notify if isinstance(notify, dict) else {}))
+        region = data.get("region", "")
+        if not isinstance(region, str) or (region and region not in PREFECTURES):
+            log.warning("設定の region が不正なため未設定にします: %r", region)
+            region = ""
+        return cls(
+            NotifyConfig.from_dict(notify if isinstance(notify, dict) else {}),
+            region,
+        )
 
     def save(self) -> None:
         """設定を保存する。失敗した場合は例外を送出する"""
         path = config_path()
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("w", encoding="utf-8") as f:
-            json.dump({"notify": asdict(self.notify)}, f, ensure_ascii=False, indent=2)
+            json.dump(
+                {"notify": asdict(self.notify), "region": self.region},
+                f,
+                ensure_ascii=False,
+                indent=2,
+            )
             f.write("\n")

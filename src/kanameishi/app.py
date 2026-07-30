@@ -121,6 +121,9 @@ class EarthquakeApp(App):
         self._ws.on_eew(self._on_ws_eew)
         self._ws.on_status_change(self._on_ws_status)
 
+        # 「自分の地域」設定をヘッダー・EEWパネルに反映
+        self._apply_region()
+
         # 初期データ取得
         await self._fetch_initial_data()
 
@@ -138,6 +141,28 @@ class EarthquakeApp(App):
 
     def _refresh_detail(self) -> None:
         self.query_one("#quake-detail", QuakeDetailWidget).refresh()
+
+    def _apply_region(self) -> None:
+        """「自分の地域」設定を各ウィジェットに反映する"""
+        region = self._config.region
+        self.query_one("#app-header", HeaderWidget).region_pref = region
+        self.query_one("#eew-info", EEWPanelWidget).region_pref = region
+        self._update_region_status()
+
+    def _update_region_status(self) -> None:
+        """ヘッダーの「あなたの地域」を、その地域を最後に揺らした地震で更新する"""
+        header = self.query_one("#app-header", HeaderWidget)
+        region = self._config.region
+        scale, quake_time = -1, ""
+        if region:
+            # self._quakes は新しい順。最初に見つかった観測が直近の揺れ
+            for quake in self._quakes:
+                s = quake.max_scale_in(region)
+                if s > 0:
+                    scale, quake_time = s, quake.display_time
+                    break
+        header.region_scale = scale
+        header.region_time = quake_time
 
     def _alert(self, title: str, message: str, *, urgent: bool = False) -> None:
         """OS通知と音アラートを出す (画面を見ていないときに気づけるようにする)"""
@@ -177,6 +202,7 @@ class EarthquakeApp(App):
             if quakes:
                 self._select_quake(quakes[0])
 
+            self._update_region_status()
             self._update_timestamp()
         except Exception as e:
             log.error("初期データ取得エラー: %s", e)
@@ -198,6 +224,7 @@ class EarthquakeApp(App):
                 self._quakes = quakes
                 table = self.query_one("#quake-table", QuakeTableWidget)
                 table.update_quakes(quakes)
+                self._update_region_status()
                 self._update_timestamp()
         except Exception as e:
             log.warning("ポーリングエラー: %s", e)
@@ -244,13 +271,21 @@ class EarthquakeApp(App):
             timeout=20,
         )
 
+        # 自分の地域の予報区 (無ければ None)
+        region = self._config.region
+        region_area = eew.area_for_pref(region) if region else None
+
         cfg = self._config.notify
-        if cfg.eew_always or eew.max_expected_scale >= cfg.min_scale:
-            self._alert(
-                f"🚨 {test}緊急地震速報〔警報〕",
-                f"{eew.location}{mag} 予想最大震度{scale_name(eew.max_expected_scale)}",
-                urgent=True,
-            )
+        if (
+            cfg.eew_always
+            or eew.max_expected_scale >= cfg.min_scale
+            or (cfg.region_always and region_area is not None)
+        ):
+            message = f"{eew.location}{mag} 予想最大震度{scale_name(eew.max_expected_scale)}"
+            if region_area is not None:
+                # 到達までの秒数は通知が届くまでにずれるため、震度だけを載せる
+                message += f"（📍{region} 予想震度{scale_name(region_area.scale)}）"
+            self._alert(f"🚨 {test}緊急地震速報〔警報〕", message, urgent=True)
 
     def _clear_eew(self) -> None:
         """EEW表示を終了"""
@@ -280,14 +315,18 @@ class EarthquakeApp(App):
         table = self.query_one("#quake-table", QuakeTableWidget)
         # 履歴を遡って閲覧中 (先頭以外を選択中) なら詳細表示を奪わない
         following = not self._quakes or table.cursor_row in (0, None)
+        region = self._config.region
 
         # 同一地震の続報 (震度速報→震源情報→詳細) は既存行を置き換える
         existing = self._find_same_quake(quake)
         if existing is not None:
-            previous_scale = self._quakes[existing].max_scale
+            previous = self._quakes[existing]
+            previous_scale = previous.max_scale
+            previous_region_scale = previous.max_scale_in(region) if region else -1
             self._quakes[existing] = quake
         else:
             previous_scale = -1
+            previous_region_scale = -1
             self._quakes.insert(0, quake)
             self._quakes = self._quakes[:50]  # 最大50件
 
@@ -297,10 +336,18 @@ class EarthquakeApp(App):
         if following:
             table.move_cursor(row=0)
             self._select_quake(self._quakes[0])
+        self._update_region_status()
         self._update_timestamp()
 
-        # 通知 (続報は震度が上がったときだけ再通知する)
-        if existing is None or quake.max_scale > previous_scale:
+        # 自分の地域の震度。続報で初めて判明することがあるため毎回とる
+        region_scale = quake.max_scale_in(region) if region else -1
+
+        # 通知 (続報は震度、または自分の地域の震度が上がったときだけ再通知する)
+        if (
+            existing is None
+            or quake.max_scale > previous_scale
+            or region_scale > previous_region_scale
+        ):
             # 震度速報はマグニチュード未定で -1 が入るため省略する
             mag = f" M{quake.magnitude:.1f}" if quake.magnitude > 0 else ""
             self.notify(
@@ -308,11 +355,14 @@ class EarthquakeApp(App):
                 severity="warning",
                 timeout=10,
             )
-            if quake.max_scale >= self._config.notify.min_scale:
-                self._alert(
-                    f"🔴 地震速報 最大震度{quake.max_scale_name}",
-                    f"{quake.location}{mag}",
-                )
+            cfg = self._config.notify
+            # しきい値未満でも、自分の地域が揺れたら知らせる
+            region_hit = cfg.region_always and region_scale > 0
+            if quake.max_scale >= cfg.min_scale or region_hit:
+                message = f"{quake.location}{mag}"
+                if region_scale > 0:
+                    message += f"（📍{region} 震度{scale_name(region_scale)}）"
+                self._alert(f"🔴 地震速報 最大震度{quake.max_scale_name}", message)
 
     def _find_same_quake(self, quake: QuakeInfo) -> int | None:
         """同一地震の既存エントリを探す (発生時刻が一致すれば同一とみなす)"""
@@ -456,6 +506,7 @@ class EarthquakeApp(App):
         if config is None:
             return
         self._config = config
+        self._apply_region()
         self.notify("設定を保存しました", timeout=4)
 
     def action_show_detail(self) -> None:

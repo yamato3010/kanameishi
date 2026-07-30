@@ -234,6 +234,10 @@ class QuakeInfo:
     def longitude(self) -> float:
         return self.earthquake.hypocenter.longitude
 
+    def max_scale_in(self, pref: str) -> int:
+        """指定した都道府県で観測された最大震度 (観測点が無ければ -1)"""
+        return max((p.scale for p in self.points if p.pref == pref), default=-1)
+
 
 @dataclass
 class EEWArea:
@@ -326,6 +330,17 @@ class EEWInfo:
         """予報区の予想震度の最大値"""
         scales = [a.scale for a in self.areas]
         return max(scales, default=-1)
+
+    def area_for_pref(self, pref: str) -> Optional[EEWArea]:
+        """指定した都道府県の予報区のうち予想震度が最大のものを返す
+
+        1つの都道府県が複数の予報区に分かれる (例: 東京都２３区 / 東京都多摩東部) ため、
+        「自分の地域」の代表として最も揺れる予報区を選ぶ。
+        """
+        areas = [a for a in self.areas if a.pref == pref]
+        if not areas:
+            return None
+        return max(areas, key=lambda a: a.scale)
 
     def origin_datetime(self) -> Optional[datetime]:
         return parse_time(self.origin_time)

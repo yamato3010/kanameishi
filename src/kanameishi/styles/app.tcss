@@ -76,7 +76,9 @@ HeaderWidget {
 #eew-panel {
     display: none;
     height: auto;
-    max-height: 14;
+    /* 「自分の地域」ブロック (3行) を出しても縦スクロールバーが出ない高さ。
+       スクロールバーが出ると幅が1桁減って予報区の各行が折り返してしまう */
+    max-height: 16;
     border: heavy #e51e28;
     background: #1a0d14;
     overflow-y: auto;

@@ -12,7 +12,7 @@ from textual.widgets import Button, Label, Select, Static, Switch
 
 from .. import notify
 from ..api.models import scale_name
-from ..config import SELECTABLE_SCALES, Config, NotifyConfig, config_path
+from ..config import PREFECTURES, SELECTABLE_SCALES, Config, NotifyConfig, config_path
 
 
 class SettingsScreen(ModalScreen[Optional[Config]]):
@@ -65,8 +65,18 @@ class SettingsScreen(ModalScreen[Optional[Config]]):
         content-align: left middle;
     }
 
-    #notify-min-scale {
+    #notify-min-scale, #region {
         width: 16;
+    }
+
+    /* ドロップダウンのリストは Select より左に広げる。
+       開いたリストは下の行 (ラベル + スイッチ) に重なるが、Textual は重なった
+       ウィジェットの境界でリストを分割するため、境界に全角文字がまたがると
+       その1文字が空白に潰れる (「栃木県」が「栃　県」になる)。
+       スイッチ列の左端から十分離しておけば、境界は項目名より右の余白に落ちる */
+    #notify-min-scale SelectOverlay, #region SelectOverlay {
+        width: 30;
+        offset: -14 0;
     }
 
     #settings-note {
@@ -110,6 +120,15 @@ class SettingsScreen(ModalScreen[Optional[Config]]):
             dialog.border_title = "設定"
 
             with Horizontal(classes="setting-row"):
+                yield Label("自分の地域 (都道府県)", classes="setting-label")
+                yield Select(
+                    [("未設定", "")] + [(p, p) for p in PREFECTURES],
+                    value=self._config.region,
+                    allow_blank=False,
+                    id="region",
+                )
+
+            with Horizontal(classes="setting-row"):
                 yield Label("OS通知", classes="setting-label")
                 yield Switch(value=n.enabled, id="notify-enabled")
 
@@ -133,6 +152,10 @@ class SettingsScreen(ModalScreen[Optional[Config]]):
             with Horizontal(classes="setting-row"):
                 yield Label("津波予報は震度によらず通知", classes="setting-label")
                 yield Switch(value=n.tsunami_always, id="notify-tsunami-always")
+
+            with Horizontal(classes="setting-row"):
+                yield Label("自分の地域が揺れたら震度によらず通知", classes="setting-label")
+                yield Switch(value=n.region_always, id="notify-region-always")
 
             if not notify.is_supported():
                 yield Static(
@@ -161,7 +184,9 @@ class SettingsScreen(ModalScreen[Optional[Config]]):
                 sound=self.query_one("#notify-sound", Switch).value,
                 eew_always=self.query_one("#notify-eew-always", Switch).value,
                 tsunami_always=self.query_one("#notify-tsunami-always", Switch).value,
-            )
+                region_always=self.query_one("#notify-region-always", Switch).value,
+            ),
+            region=self.query_one("#region", Select).value,
         )
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
