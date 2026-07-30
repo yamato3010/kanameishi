@@ -5,12 +5,15 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Optional
 
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, Vertical, Container
 from textual.widgets import Static
 from textual.binding import Binding
 
+from . import notify as os_notify
+from .config import Config
 from .api.client import P2PQuakeClient
 from .api.websocket import P2PQuakeWebSocket
 from .api.models import (
@@ -32,6 +35,7 @@ from .widgets.quake_table import QuakeTableWidget
 from .widgets.intensity_bar import IntensityBarWidget
 from .widgets.status_bar import StatusBarWidget
 from .screens.about import AboutScreen
+from .screens.settings import SettingsScreen
 
 log = logging.getLogger(__name__)
 
@@ -54,12 +58,14 @@ class EarthquakeApp(App):
         Binding("q", "quit", "終了", priority=True),
         Binding("r", "refresh", "更新"),
         Binding("d", "show_detail", "詳細"),
+        Binding("comma", "settings", "設定"),
         Binding("question_mark", "about", "情報"),
         Binding("e", "demo_eew", "EEWデモ", show=False),
     ]
 
     def __init__(self) -> None:
         super().__init__()
+        self._config = Config.load()
         self._client = P2PQuakeClient()
         self._ws = P2PQuakeWebSocket()
         self._quakes: list[QuakeInfo] = []
@@ -132,6 +138,19 @@ class EarthquakeApp(App):
 
     def _refresh_detail(self) -> None:
         self.query_one("#quake-detail", QuakeDetailWidget).refresh()
+
+    def _alert(self, title: str, message: str, *, urgent: bool = False) -> None:
+        """OS通知と音アラートを出す (画面を見ていないときに気づけるようにする)"""
+        cfg = self._config.notify
+        if not cfg.enabled:
+            return
+        if cfg.sound:
+            self.bell()
+        self.run_worker(
+            os_notify.send(title, message, urgent=urgent),
+            name="os-notify",
+            exit_on_error=False,
+        )
 
     async def on_unmount(self) -> None:
         """アプリ終了時のクリーンアップ"""
@@ -225,6 +244,14 @@ class EarthquakeApp(App):
             timeout=20,
         )
 
+        cfg = self._config.notify
+        if cfg.eew_always or eew.max_expected_scale >= cfg.min_scale:
+            self._alert(
+                f"🚨 {test}緊急地震速報〔警報〕",
+                f"{eew.location}{mag} 予想最大震度{scale_name(eew.max_expected_scale)}",
+                urgent=True,
+            )
+
     def _clear_eew(self) -> None:
         """EEW表示を終了"""
         self._eew = None
@@ -281,6 +308,11 @@ class EarthquakeApp(App):
                 severity="warning",
                 timeout=10,
             )
+            if quake.max_scale >= self._config.notify.min_scale:
+                self._alert(
+                    f"🔴 地震速報 最大震度{quake.max_scale_name}",
+                    f"{quake.location}{mag}",
+                )
 
     def _find_same_quake(self, quake: QuakeInfo) -> int | None:
         """同一地震の既存エントリを探す (発生時刻が一致すれば同一とみなす)"""
@@ -301,6 +333,8 @@ class EarthquakeApp(App):
                 severity="error",
                 timeout=15,
             )
+            if self._config.notify.tsunami_always:
+                self._alert("🌊 津波予報 発表中", areas, urgent=True)
 
     def _update_tsunami_banner(self, tsunami: TsunamiInfo) -> None:
         """津波予報バナー・津波パネルを更新"""
@@ -411,6 +445,18 @@ class EarthquakeApp(App):
         """「このアプリについて」を表示 (?キー)"""
         if not isinstance(self.screen, AboutScreen):
             self.push_screen(AboutScreen())
+
+    def action_settings(self) -> None:
+        """設定画面を表示 (,キー)"""
+        if not isinstance(self.screen, SettingsScreen):
+            self.push_screen(SettingsScreen(self._config), self._on_settings_saved)
+
+    def _on_settings_saved(self, config: Optional[Config]) -> None:
+        """設定画面が保存して閉じたら、以降の通知に反映する"""
+        if config is None:
+            return
+        self._config = config
+        self.notify("設定を保存しました", timeout=4)
 
     def action_show_detail(self) -> None:
         """選択中の地震の詳細を表示"""

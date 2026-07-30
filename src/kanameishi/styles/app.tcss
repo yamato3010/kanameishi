@@ -5,9 +5,9 @@ Screen {
     layout: vertical;
 }
 
-/* 「このアプリについて」モーダル。背後のメイン画面を透過させるため、
+/* モーダル画面。背後のメイン画面を透過させるため、
    上の Screen ルール (不透明) をここで打ち消す */
-AboutScreen {
+AboutScreen, SettingsScreen {
     background: #0b0b14 60%;
 }
 
