@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.3.0](https://github.com/yamato3010/kanameishi/compare/v0.2.1...v0.3.0) (2026-07-30)
+
+
+### Features
+
+* ✨ OS通知、設定画面を追加 ([bf73ba9](https://github.com/yamato3010/kanameishi/commit/bf73ba9b72e05b2452d5ee9d6077d018051a3d03))
+* ✨ 自分の地域設定機能を追加 ([5d56d05](https://github.com/yamato3010/kanameishi/commit/5d56d0564082564bea902df3b2a7e9f7fa3337ff))
+* ✨ 詳細画面を追加 ([b0d59e0](https://github.com/yamato3010/kanameishi/commit/b0d59e0b662b3434f582c395befdd373d21b85db))
+
+
+### Documentation
+
+* 📝 動作確認用コマンドを追加 ([3c97fc0](https://github.com/yamato3010/kanameishi/commit/3c97fc0983b5ec1c284c72711bbb15072f5127b6))
+
 ## [0.2.1](https://github.com/yamato3010/kanameishi/compare/v0.2.0...v0.2.1) (2026-07-29)
 
 
