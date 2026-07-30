@@ -35,6 +35,7 @@ from .widgets.quake_table import QuakeTableWidget
 from .widgets.intensity_bar import IntensityBarWidget
 from .widgets.status_bar import StatusBarWidget
 from .screens.about import AboutScreen
+from .screens.quake_detail import QuakeDetailScreen
 from .screens.settings import SettingsScreen
 
 log = logging.getLogger(__name__)
@@ -510,11 +511,17 @@ class EarthquakeApp(App):
         self.notify("設定を保存しました", timeout=4)
 
     def action_show_detail(self) -> None:
-        """選択中の地震の詳細を表示"""
+        """選択中の地震の詳細をモーダルで表示 (dキー)
+
+        右パネルはカーソル移動で常に追従しているため、ここでは
+        パネルに収まらない情報 (全観測地点など) を別画面で見せる。
+        """
         table = self.query_one("#quake-table", QuakeTableWidget)
         quake = table.get_selected_quake()
-        if quake:
-            self._select_quake(quake)
+        if quake is None:
+            self.notify("表示できる地震がありません", timeout=4)
+            return
+        self.push_screen(QuakeDetailScreen(quake, self._config.region))
 
     def on_data_table_row_selected(self, event: QuakeTableWidget.RowSelected) -> None:
         """テーブル行選択イベント"""
