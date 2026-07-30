@@ -32,6 +32,7 @@ class StatusBarWidget(Widget):
             ("R", "更新"),
             ("↑↓/JK", "選択"),
             ("D", "詳細"),
+            (",", "設定"),
             ("?", "情報"),
         ]
         for key, label in bindings:

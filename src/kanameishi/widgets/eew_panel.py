@@ -6,10 +6,15 @@ from rich.text import Text
 from textual.widget import Widget
 from textual.reactive import reactive
 
-from ..api.models import EEWInfo, scale_color, scale_hex, scale_name
+from ..api.models import EEWArea, EEWInfo, scale_color, scale_hex, scale_name
 
 # 表示する予報区の最大数
 MAX_AREAS = 8
+
+# 「自分の地域」ブロックが占める行数。
+# パネルの高さ (max-height) を超えるとスクロールバーのぶん幅が減って各行が折り返すため、
+# ブロックを出すときは同じ行数だけ一覧を減らして総行数を変えない。
+REGION_BLOCK_LINES = 3
 
 
 class EEWPanelWidget(Widget):
@@ -23,6 +28,8 @@ class EEWPanelWidget(Widget):
     """
 
     eew_data: reactive[EEWInfo | None] = reactive(None)
+    # 「自分の地域」(設定の region)。一致する予報区は先頭で大きく表示する
+    region_pref: reactive[str] = reactive("")
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -55,6 +62,13 @@ class EEWPanelWidget(Widget):
             text.append(f"   発生から {int(elapsed)}秒", style="dim")
         text.append("\n")
 
+        # 「自分の地域」の予報区は一覧に埋もれさせず、先頭で大きく扱う
+        region_area = eew.area_for_pref(self.region_pref) if self.region_pref else None
+        max_areas = MAX_AREAS
+        if region_area is not None:
+            self._append_region_block(text, region_area)
+            max_areas -= REGION_BLOCK_LINES
+
         # 予報区ごとのカウントダウン (到達が早い順)
         areas = sorted(
             eew.areas,
@@ -63,10 +77,14 @@ class EEWPanelWidget(Widget):
                 a.seconds_until_arrival() or 0,
             ),
         )
-        for area in areas[:MAX_AREAS]:
+        for area in areas[:max_areas]:
             color = scale_color(area.scale)
+            mine = bool(self.region_pref) and area.pref == self.region_pref
             text.append(" ●", style=f"bold {color}")
-            text.append(f" {area.name[:10]:　<10}", style="white")
+            text.append(
+                f" {area.name[:10]:　<10}",
+                style="bold white on #2d2d50" if mine else "white",
+            )
             text.append(f" 震度{scale_name(area.scale)}", style=f"bold {color}")
             remain = area.seconds_until_arrival()
             if remain is None:
@@ -76,10 +94,27 @@ class EEWPanelWidget(Widget):
             else:
                 text.append(f"  あと{remain:2d}秒", style="bold gold1")
             text.append("\n")
-        if len(eew.areas) > MAX_AREAS:
-            text.append(f" ほか{len(eew.areas) - MAX_AREAS}地域\n", style="dim")
+        if len(eew.areas) > max_areas:
+            text.append(f" ほか{len(eew.areas) - max_areas}地域\n", style="dim")
 
         return text
+
+    def _append_region_block(self, text: Text, area: EEWArea) -> None:
+        """「自分の地域」の予想震度と主要動到達カウントダウンを強調表示する"""
+        hex_color = scale_hex(area.scale)
+        badge_fg = "black" if area.scale in (40, 45) else "white"
+        text.append(f" 📍 あなたの地域 {area.name} ", style=f"bold {badge_fg} on {hex_color}")
+        text.append("\n")
+
+        text.append(f"  予想震度 {scale_name(area.scale)}", style=f"bold {hex_color}")
+        remain = area.seconds_until_arrival()
+        if remain is None:
+            text.append("   到達予測なし", style="dim")
+        elif remain <= 0:
+            text.append("   主要動 到達", style="bold red1")
+        else:
+            text.append(f"   主要動 あと {remain} 秒", style="bold gold1")
+        text.append("\n\n")
 
     def update_eew(self, eew: EEWInfo | None) -> None:
         """表示するEEWを更新。表示中はカウントダウン用タイマーを回す"""
