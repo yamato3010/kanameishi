@@ -65,6 +65,12 @@
 
 リリースノートの見出しは release-please のデフォルトで英語 (`Features` / `Bug Fixes`) です。日本語にしたい場合は `release-please-config.json` に `changelog-sections` を追加して `{"type": "feat", "section": "新機能"}` のように指定します。
 
+## ローカルで起動する
+
+```bash
+myenv/bin/python -m kanameishi
+```
+
 ## ローカルでビルドを確認する
 
 CI と同じ成果物を手元で作れます。
