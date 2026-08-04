@@ -202,6 +202,9 @@ kaname
 
 [P2P地震情報](https://www.p2pquake.net/) - 商用・非商用問わず無償利用可能
 
+地震情報・津波予報・緊急地震速報は気象庁が発表した情報です。
+2021年4月4日までの情報は [CC BY 4.0](https://www.jma.go.jp/jma/kishou/info/coment.html) に準拠します。
+
 ## ライセンス
 
 MIT
