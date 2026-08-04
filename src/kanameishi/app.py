@@ -45,6 +45,9 @@ CSS_PATH = Path(__file__).parent / "styles" / "app.tcss"
 # 自動更新間隔 (秒)
 POLL_INTERVAL = 60
 
+# 履歴の1ページあたりの取得件数 (APIの上限は100件)
+PAGE_SIZE = 100
+
 # 緊急地震速報の表示継続時間 (発生からの秒数)
 EEW_DISPLAY_SECONDS = 180
 
@@ -73,6 +76,9 @@ class EarthquakeApp(App):
         self._latest_quake: QuakeInfo | None = None
         self._eew: EEWInfo | None = None
         self._eew_received_at: datetime | None = None
+        self._loading_more = False
+        self._history_end = False
+        self._history_offset = 0  # 次に読むAPIのoffset (続報を除く前の生の件数で数える)
 
     def compose(self) -> ComposeResult:
         # ヘッダー + EEW/津波警告バナー (通常は非表示)
@@ -190,10 +196,13 @@ class EarthquakeApp(App):
             pass
 
     async def _fetch_initial_data(self) -> None:
-        """初期データをREST APIから取得"""
+        """初期データをREST APIから取得 (読み込み済みの履歴は破棄して先頭に戻る)"""
         try:
-            quakes = await self._client.get_quake_list(limit=20)
+            page = await self._client.get_quake_list(limit=PAGE_SIZE)
+            quakes = self._dedupe(page)
             self._quakes = quakes
+            self._history_offset = len(page)
+            self._history_end = False
 
             # テーブル更新
             table = self.query_one("#quake-table", QuakeTableWidget)
@@ -205,6 +214,7 @@ class EarthquakeApp(App):
 
             self._update_region_status()
             self._update_timestamp()
+            self._update_history_title()
         except Exception as e:
             log.error("初期データ取得エラー: %s", e)
             self.notify(f"データ取得エラー: {e}", severity="error", timeout=5)
@@ -220,15 +230,76 @@ class EarthquakeApp(App):
     async def _poll_data(self) -> None:
         """定期ポーリングでデータ更新"""
         try:
-            quakes = await self._client.get_quake_list(limit=20)
-            if quakes:
-                self._quakes = quakes
+            page = await self._client.get_quake_list(limit=PAGE_SIZE)
+            if page:
+                # 先頭ページで上書きすると読み込み済みの過去ページが消えるため統合する
+                quakes = self._dedupe(page)
+                keys = {self._quake_key(q) for q in quakes}
+                self._quakes = quakes + [
+                    q for q in self._quakes if self._quake_key(q) not in keys
+                ]
                 table = self.query_one("#quake-table", QuakeTableWidget)
-                table.update_quakes(quakes)
+                table.update_quakes(self._quakes)
                 self._update_region_status()
                 self._update_timestamp()
+                self._update_history_title()
         except Exception as e:
             log.warning("ポーリングエラー: %s", e)
+
+    async def _fetch_more(self) -> None:
+        """履歴の続き (より古い地震) を読み込む"""
+        if self._loading_more or self._history_end:
+            return
+        self._loading_more = True
+        try:
+            page = await self._client.get_quake_list(
+                limit=PAGE_SIZE, offset=self._history_offset
+            )
+            self._history_offset += len(page)
+            # 満たない件数しか返らなければデータの末端 (APIの提供は2015/01/10から)
+            if len(page) < PAGE_SIZE:
+                self._history_end = True
+
+            # 読み込み済みと重なる分を除く。新着でoffsetがずれた場合もここで吸収される
+            keys = {self._quake_key(q) for q in self._quakes}
+            fresh = [q for q in self._dedupe(page) if self._quake_key(q) not in keys]
+            if fresh:
+                self._quakes.extend(fresh)
+                self.query_one("#quake-table", QuakeTableWidget).append_quakes(fresh)
+            self._update_history_title()
+        except Exception as e:
+            log.warning("履歴の追加読み込みエラー: %s", e)
+        finally:
+            self._loading_more = False
+
+    @classmethod
+    def _dedupe(cls, quakes: list[QuakeInfo]) -> list[QuakeInfo]:
+        """同一地震の続報をまとめる
+
+        /jma/quake は震度速報・震源情報・詳細を別々のレコードとして返すため、
+        そのまま並べると同じ地震が最大3行に増える。新しい順に並んでいるので
+        最初に現れたもの (最新の報) を残す。
+        """
+        seen: set[str] = set()
+        result = []
+        for q in quakes:
+            key = cls._quake_key(q)
+            if key not in seen:
+                seen.add(key)
+                result.append(q)
+        return result
+
+    @staticmethod
+    def _quake_key(quake: QuakeInfo) -> str:
+        """同一地震の判定キー (続報は発生時刻が同じなので1件にまとめる)"""
+        return quake.earthquake.time or quake.id
+
+    def _update_history_title(self) -> None:
+        """履歴パネルのタイトルに読み込み済み件数を出す"""
+        suffix = "" if self._history_end else "+"
+        self.query_one("#history-panel").border_title = (
+            f"📜 地震履歴 ({len(self._quakes)}件{suffix})"
+        )
 
     def _on_ws_quake(self, quake: QuakeInfo) -> None:
         """WebSocketから地震情報を受信
@@ -329,9 +400,9 @@ class EarthquakeApp(App):
             previous_scale = -1
             previous_region_scale = -1
             self._quakes.insert(0, quake)
-            self._quakes = self._quakes[:50]  # 最大50件
 
         table.update_quakes(self._quakes)
+        self._update_history_title()
 
         # 詳細表示を更新 (最新を追従中のみ)
         if following:
@@ -536,3 +607,7 @@ class EarthquakeApp(App):
         quake = table.get_selected_quake()
         if quake:
             self._select_quake(quake)
+
+    def on_quake_table_widget_load_more(self, event: QuakeTableWidget.LoadMore) -> None:
+        """履歴の末尾に近づいたら続きを読み込む (無限スクロール)"""
+        self.run_worker(self._fetch_more(), name="fetch-more", exit_on_error=False)
