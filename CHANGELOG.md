@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.4.0](https://github.com/yamato3010/kanameishi/compare/v0.3.0...v0.4.0) (2026-08-06)
+
+
+### Features
+
+* ✨ デザインを変更 ([e255e38](https://github.com/yamato3010/kanameishi/commit/e255e38bb9a55cbf3c8435a04c2269df8a1ee175))
+* ✨ デザインを変更 ([366b4aa](https://github.com/yamato3010/kanameishi/commit/366b4aaaeb4fdbe3146c8c42d11f85864f35139a))
+* ✨ 地震履歴を無限スクロールで遡れるようにする ([866a899](https://github.com/yamato3010/kanameishi/commit/866a89946c8f24e71241ff77d9eb58a40a94b0a6))
+
+
+### Documentation
+
+* 📝 気象庁のクレジット表記を追加 ([f075e3b](https://github.com/yamato3010/kanameishi/commit/f075e3b8d33b90be326b579896ef1e0824192dcc))
+
 ## [0.3.0](https://github.com/yamato3010/kanameishi/compare/v0.2.1...v0.3.0) (2026-07-30)
 
 
