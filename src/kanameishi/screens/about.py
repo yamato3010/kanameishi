@@ -73,7 +73,6 @@ class AboutScreen(ModalScreen):
     #about-footer {
         height: 1;
         margin-top: 1;
-        text-align: center;
         color: #8b8bb8;
     }
     """
@@ -82,4 +81,4 @@ class AboutScreen(ModalScreen):
         with Container(id="about-dialog") as dialog:
             dialog.border_title = "このアプリについて"
             yield Static(build_about_text(), id="about-body")
-            yield Static("Esc で閉じる", id="about-footer")
+            yield Static("esc 閉じる", id="about-footer")
