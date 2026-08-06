@@ -26,18 +26,18 @@ class StatusBarWidget(Widget):
     def render(self) -> Text:
         text = Text()
 
-        # キーバインド
+        # キーバインド (Textual 標準の Footer と同じ「キー + 説明」の並べ方に揃える)
         bindings = [
-            ("Q", "終了"),
-            ("R", "更新"),
-            ("↑↓/JK", "選択"),
-            ("D", "詳細"),
+            ("q", "終了"),
+            ("r", "更新"),
+            ("↑↓/jk", "選択"),
+            ("d", "詳細"),
             (",", "設定"),
             ("?", "情報"),
         ]
         for key, label in bindings:
-            text.append(f" {key} ", style="bold black on #3f3f5a")
-            text.append(f" {label}  ", style="dim")
+            text.append(f" {key} ", style="bold #a1a1c2")
+            text.append(f"{label} ")
 
         # 右側: データソース / 最終更新 / 接続状態
         right = Text()

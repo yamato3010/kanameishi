@@ -210,7 +210,6 @@ class QuakeDetailScreen(ModalScreen):
     #quake-detail-footer {
         height: 1;
         margin-top: 1;
-        text-align: center;
         color: #8b8bb8;
     }
     """
@@ -234,7 +233,7 @@ class QuakeDetailScreen(ModalScreen):
             with VerticalScroll(id="quake-detail-scroll"):
                 yield ObservationListWidget(self._quake.points)
 
-            yield Static("↑↓/JK スクロール   Esc 閉じる", id="quake-detail-footer")
+            yield Static("↑↓/jk スクロール  esc 閉じる", id="quake-detail-footer")
 
     def on_mount(self) -> None:
         # 矢印キーでそのままスクロールできるようにする

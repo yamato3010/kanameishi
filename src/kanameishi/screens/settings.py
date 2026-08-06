@@ -8,7 +8,7 @@ from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Container, Horizontal
 from textual.screen import ModalScreen
-from textual.widgets import Button, Label, Select, Static, Switch
+from textual.widgets import Button, Checkbox, Label, Select, Static
 
 from .. import notify
 from ..api.models import scale_name
@@ -19,7 +19,7 @@ class SettingsScreen(ModalScreen[Optional[Config]]):
     """通知設定を編集するモーダル
 
     保存すると設定ファイルに書き出し、更新後の Config を返す。
-    キャンセル・Esc の場合は None を返す。
+    取消・esc の場合は None を返す。
     """
 
     BINDINGS = [
@@ -42,6 +42,9 @@ class SettingsScreen(ModalScreen[Optional[Config]]):
         width: 60;
         max-width: 100%;
         height: auto;
+        /* 端末が低いときは項目が入りきらないのでスクロールさせる */
+        max-height: 100%;
+        overflow-y: auto;
         padding: 1 2;
         border: round #2e2e48;
         background: #10101c;
@@ -49,34 +52,55 @@ class SettingsScreen(ModalScreen[Optional[Config]]):
         border-title-style: bold;
     }
 
-    .setting-row {
-        height: 3;
-        align: left middle;
+    #settings-dialog Label {
+        margin-top: 1;
+        color: #8b8bb8;
     }
 
-    /* 操作中の行を分かりやすくする */
-    .setting-row:focus-within {
-        background: #1c1c2e;
+    /* プルダウンは枠を省いて高さを詰めている (端末が低くてもフォームが収まる
+       ように)。代わりに背景で選択欄の範囲を示す */
+    #settings-dialog Select > SelectCurrent {
+        background: #2e2e48;
     }
 
-    .setting-label {
-        width: 1fr;
-        height: 3;
-        content-align: left middle;
+    /* Select は枠線でしかフォーカスを示さない作りなので、枠を消すと変化が無くなる。
+       開いたときの選択行と同じ配色 (履歴表のカーソル色) で塗って分かるようにする */
+    #settings-dialog Select:focus > SelectCurrent {
+        background: #2d2d50;
+        color: white;
     }
 
-    #notify-min-scale, #region {
-        width: 16;
+    /* SelectCurrent の中身は自前の色を持っているので、フォーカス時はまとめて上書きする */
+    #settings-dialog Select:focus > SelectCurrent Static#label,
+    #settings-dialog Select:focus > SelectCurrent .arrow {
+        color: white;
     }
 
-    /* ドロップダウンのリストは Select より左に広げる。
-       開いたリストは下の行 (ラベル + スイッチ) に重なるが、Textual は重なった
-       ウィジェットの境界でリストを分割するため、境界に全角文字がまたがると
-       その1文字が空白に潰れる (「栃木県」が「栃　県」になる)。
-       スイッチ列の左端から十分離しておけば、境界は項目名より右の余白に落ちる */
-    #notify-min-scale SelectOverlay, #region SelectOverlay {
-        width: 30;
-        offset: -14 0;
+    /* チェックボックスもアプリの配色に寄せる (既定は Textual のテーマ色) */
+    #settings-dialog Checkbox > .toggle--button {
+        color: #10101c;
+        background: #2e2e48;
+    }
+
+    #settings-dialog Checkbox.-on > .toggle--button {
+        color: #22c55e;
+        background: #2e2e48;
+    }
+
+    #settings-dialog Checkbox:focus > .toggle--label {
+        color: white;
+        background: #2d2d50;
+    }
+
+    /* ここから下が通知の設定。上の「自分の地域」と続いて見えないよう間を空ける */
+    #notify-enabled {
+        margin-top: 1;
+    }
+
+    /* 「最小震度」は「OS通知」に属する設定なので、Label の既定の余白を打ち消して
+       通知の設定を「OS通知」の下にひと塊で並べる */
+    #settings-dialog #min-scale-label {
+        margin-top: 0;
     }
 
     #settings-note {
@@ -94,17 +118,16 @@ class SettingsScreen(ModalScreen[Optional[Config]]):
     #settings-buttons {
         height: auto;
         margin-top: 1;
-        align: center middle;
+        align-horizontal: right;
     }
 
     #settings-buttons Button {
-        margin: 0 1;
+        margin-left: 2;
     }
 
     #settings-footer {
-        height: 1;
+        height: auto;
         margin-top: 1;
-        text-align: center;
         color: #8b8bb8;
     }
     """
@@ -119,43 +142,47 @@ class SettingsScreen(ModalScreen[Optional[Config]]):
         with Container(id="settings-dialog") as dialog:
             dialog.border_title = "設定"
 
-            with Horizontal(classes="setting-row"):
-                yield Label("自分の地域 (都道府県)", classes="setting-label")
-                yield Select(
-                    [("未設定", "")] + [(p, p) for p in PREFECTURES],
-                    value=self._config.region,
-                    allow_blank=False,
-                    id="region",
-                )
+            yield Label("自分の地域 (都道府県)")
+            yield Select(
+                [("未設定", "")] + [(p, p) for p in PREFECTURES],
+                value=self._config.region,
+                allow_blank=False,
+                compact=True,
+                id="region",
+            )
 
-            with Horizontal(classes="setting-row"):
-                yield Label("OS通知", classes="setting-label")
-                yield Switch(value=n.enabled, id="notify-enabled")
+            yield Checkbox("OS通知", value=n.enabled, compact=True, id="notify-enabled")
 
-            with Horizontal(classes="setting-row"):
-                yield Label("通知する最小震度", classes="setting-label")
-                yield Select(
-                    [(f"震度{scale_name(s)}", s) for s in SELECTABLE_SCALES],
-                    value=n.min_scale,
-                    allow_blank=False,
-                    id="notify-min-scale",
-                )
+            yield Label("通知する最小震度", id="min-scale-label")
+            yield Select(
+                [(f"震度{scale_name(s)}", s) for s in SELECTABLE_SCALES],
+                value=n.min_scale,
+                allow_blank=False,
+                compact=True,
+                id="notify-min-scale",
+            )
 
-            with Horizontal(classes="setting-row"):
-                yield Label("音アラート (端末ベル)", classes="setting-label")
-                yield Switch(value=n.sound, id="notify-sound")
-
-            with Horizontal(classes="setting-row"):
-                yield Label("緊急地震速報は震度によらず通知", classes="setting-label")
-                yield Switch(value=n.eew_always, id="notify-eew-always")
-
-            with Horizontal(classes="setting-row"):
-                yield Label("津波予報は震度によらず通知", classes="setting-label")
-                yield Switch(value=n.tsunami_always, id="notify-tsunami-always")
-
-            with Horizontal(classes="setting-row"):
-                yield Label("自分の地域が揺れたら震度によらず通知", classes="setting-label")
-                yield Switch(value=n.region_always, id="notify-region-always")
+            yield Checkbox(
+                "音アラート (端末ベル)", value=n.sound, compact=True, id="notify-sound"
+            )
+            yield Checkbox(
+                "緊急地震速報は震度によらず通知",
+                value=n.eew_always,
+                compact=True,
+                id="notify-eew-always",
+            )
+            yield Checkbox(
+                "津波予報は震度によらず通知",
+                value=n.tsunami_always,
+                compact=True,
+                id="notify-tsunami-always",
+            )
+            yield Checkbox(
+                "自分の地域が揺れたら震度によらず通知",
+                value=n.region_always,
+                compact=True,
+                id="notify-region-always",
+            )
 
             if not notify.is_supported():
                 yield Static(
@@ -167,11 +194,11 @@ class SettingsScreen(ModalScreen[Optional[Config]]):
             yield Static(f"保存先: {config_path()}", id="settings-path")
 
             with Horizontal(id="settings-buttons"):
-                yield Button("保存", variant="primary", id="save")
-                yield Button("キャンセル", id="cancel")
+                yield Button("保存", variant="primary", compact=True, id="save")
+                yield Button("取消", compact=True, id="cancel")
 
             yield Static(
-                "↑↓/JK 移動   Space 切替   Enter 決定   S 保存   Esc 閉じる",
+                "↑↓/jk 移動  space 切替  ⏎ 決定  s 保存  esc 閉じる",
                 id="settings-footer",
             )
 
@@ -179,12 +206,12 @@ class SettingsScreen(ModalScreen[Optional[Config]]):
         """画面の入力値から Config を組み立てる"""
         return Config(
             NotifyConfig(
-                enabled=self.query_one("#notify-enabled", Switch).value,
+                enabled=self.query_one("#notify-enabled", Checkbox).value,
                 min_scale=self.query_one("#notify-min-scale", Select).value,
-                sound=self.query_one("#notify-sound", Switch).value,
-                eew_always=self.query_one("#notify-eew-always", Switch).value,
-                tsunami_always=self.query_one("#notify-tsunami-always", Switch).value,
-                region_always=self.query_one("#notify-region-always", Switch).value,
+                sound=self.query_one("#notify-sound", Checkbox).value,
+                eew_always=self.query_one("#notify-eew-always", Checkbox).value,
+                tsunami_always=self.query_one("#notify-tsunami-always", Checkbox).value,
+                region_always=self.query_one("#notify-region-always", Checkbox).value,
             ),
             region=self.query_one("#region", Select).value,
         )
