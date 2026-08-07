@@ -7,7 +7,7 @@ from rich.text import Text
 from textual.widget import Widget
 from textual.reactive import reactive
 
-from ..api.models import EEWInfo, QuakeInfo, SCALE_NAMES, scale_color, scale_name
+from ..api.models import EEWInfo, QuakeInfo, SCALE_NAMES, scale_badge, scale_name
 from ..data.japan_map import (
     JAPAN_MAP_RAW,
     MAP_HEIGHT,
@@ -93,8 +93,10 @@ class JapanMapWidget(Widget):
                     continue
                 if point.scale > cell_scale.get(pos, -1):
                     cell_scale[pos] = point.scale
+            # 震度色は文字色にすると白地の端末で震度4・5弱が沈むため、
+            # セルの背景に敷いて観測点を塗りつぶしで示す
             for (r, c), scale in cell_scale.items():
-                plot_cell(grid, r, c, "●", f"bold {scale_color(scale)}")
+                plot_cell(grid, r, c, "●", scale_badge(scale))
 
             # 震源をプロット (観測点と同セルの場合は震源を優先)
             if quake.latitude and quake.longitude:
@@ -191,6 +193,6 @@ def build_legend() -> Text:
     text.append("★", style="bold bright_red")
     text.append("震源 ", style="dim")
     for s in sorted(k for k in SCALE_NAMES if k > 0):
-        text.append("●", style=f"bold {scale_color(s)}")
+        text.append("●", style=scale_badge(s))
         text.append(f"{scale_name(s)} ", style="dim")
     return text

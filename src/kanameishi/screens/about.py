@@ -32,7 +32,7 @@ LABEL_WIDTH = 14
 def build_about_text() -> Text:
     """モーダルに表示する本文を組み立てる"""
     text = Text()
-    text.append(f"🗾 {APP_NAME}\n", style="bold white")
+    text.append(f"🗾 {APP_NAME}\n", style="bold")
     text.append(f"{APP_DESCRIPTION}\n\n", style="dim")
 
     for label, value in ENTRIES:
@@ -60,9 +60,10 @@ class AboutScreen(ModalScreen):
         max-width: 100%;
         height: auto;
         padding: 1 2;
-        border: round #2e2e48;
-        background: #10101c;
-        border-title-color: #8b8bb8;
+        border: round ansi_bright_black;
+        /* 背後のメイン画面を透かさないよう、端末の背景色で塗りつぶす */
+        background: ansi_default;
+        border-title-color: ansi_default;
         border-title-style: bold;
     }
 
@@ -73,7 +74,8 @@ class AboutScreen(ModalScreen):
     #about-footer {
         height: 1;
         margin-top: 1;
-        color: #8b8bb8;
+        color: ansi_default;
+        text-style: dim;
     }
     """
 

@@ -9,7 +9,7 @@ from typing import Optional
 
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, Vertical, Container
-from textual.widgets import Static
+from textual.widgets import Header, Static
 from textual.binding import Binding
 
 from . import notify as os_notify
@@ -23,10 +23,10 @@ from .api.models import (
     QuakeInfo,
     TsunamiInfo,
     now_jst,
+    relative_time,
     scale_hex,
     scale_name,
 )
-from .widgets.header import HeaderWidget
 from .widgets.japan_map import JapanMapWidget, build_legend
 from .widgets.eew_panel import EEWPanelWidget
 from .widgets.tsunami_panel import TsunamiPanelWidget
@@ -56,7 +56,14 @@ class EarthquakeApp(App):
     """Kanameishi アプリケーション"""
 
     TITLE = "Kanameishi"
+    # 「自分の地域」が未設定のときの副題 (設定済みならその地域の震度を出す)
+    SUB_TITLE = "リアルタイム地震情報"
     CSS_PATH = CSS_PATH
+
+    # white / bright_black などの色名を、Textual が固定RGBに変換せず
+    # 端末のANSIパレット (ユーザーのターミナル配色設定) のまま出すようにする。
+    # 震度・警報の色は規格が決まっているので hex 指定のまま追従させない
+    ansi_color = True
 
     BINDINGS = [
         Binding("q", "quit", "終了", priority=True),
@@ -82,7 +89,7 @@ class EarthquakeApp(App):
 
     def compose(self) -> ComposeResult:
         # ヘッダー + EEW/津波警告バナー (通常は非表示)
-        yield HeaderWidget(id="app-header")
+        yield Header(show_clock=True)
         yield Static("", id="eew-banner")
         yield Static("", id="tsunami-banner")
 
@@ -140,36 +147,42 @@ class EarthquakeApp(App):
         # 定期ポーリング (REST フォールバック)
         self.set_interval(POLL_INTERVAL, self._poll_data)
 
-        # 詳細パネルの相対時刻 (「n分前」) を定期更新
-        self.set_interval(30, self._refresh_detail)
+        # 詳細パネルとヘッダー副題の相対時刻 (「n分前」) を定期更新
+        self.set_interval(30, self._refresh_relative_times)
 
         # EEW表示の期限切れチェック
         self.set_interval(5, self._check_eew_expiry)
 
-    def _refresh_detail(self) -> None:
+    def _refresh_relative_times(self) -> None:
         self.query_one("#quake-detail", QuakeDetailWidget).refresh()
+        self._update_region_status()
 
     def _apply_region(self) -> None:
         """「自分の地域」設定を各ウィジェットに反映する"""
-        region = self._config.region
-        self.query_one("#app-header", HeaderWidget).region_pref = region
-        self.query_one("#eew-info", EEWPanelWidget).region_pref = region
+        self.query_one("#eew-info", EEWPanelWidget).region_pref = self._config.region
         self._update_region_status()
 
     def _update_region_status(self) -> None:
-        """ヘッダーの「あなたの地域」を、その地域を最後に揺らした地震で更新する"""
-        header = self.query_one("#app-header", HeaderWidget)
+        """ヘッダーの副題を、「自分の地域」を最後に揺らした地震で更新する"""
         region = self._config.region
+        if not region:
+            self.sub_title = self.SUB_TITLE
+            return
+
         scale, quake_time = -1, ""
-        if region:
-            # self._quakes は新しい順。最初に見つかった観測が直近の揺れ
-            for quake in self._quakes:
-                s = quake.max_scale_in(region)
-                if s > 0:
-                    scale, quake_time = s, quake.display_time
-                    break
-        header.region_scale = scale
-        header.region_time = quake_time
+        # self._quakes は新しい順。最初に見つかった観測が直近の揺れ
+        for quake in self._quakes:
+            s = quake.max_scale_in(region)
+            if s > 0:
+                scale, quake_time = s, quake.display_time
+                break
+
+        if scale <= 0:
+            self.sub_title = f"📍{region} 揺れなし"
+            return
+        rel = relative_time(quake_time)
+        shaken = f"📍{region} 震度{scale_name(scale)}"
+        self.sub_title = f"{shaken} {rel}" if rel else shaken
 
     def _alert(self, title: str, message: str, *, urgent: bool = False) -> None:
         """OS通知と音アラートを出す (画面を見ていないときに気づけるようにする)"""
@@ -477,10 +490,7 @@ class EarthquakeApp(App):
 
     def _update_ws_status(self, connected: bool) -> None:
         """WebSocket接続状態UIを更新"""
-        status_bar = self.query_one("#status-bar", StatusBarWidget)
-        status_bar.ws_connected = connected
-        header = self.query_one("#app-header", HeaderWidget)
-        header.ws_connected = connected
+        self.query_one("#status-bar", StatusBarWidget).ws_connected = connected
 
     def _select_quake(self, quake: QuakeInfo) -> None:
         """地震を選択して詳細表示を更新"""

@@ -15,8 +15,7 @@ from ..api.models import (
     ObservationPoint,
     QuakeInfo,
     relative_time,
-    scale_color,
-    scale_hex,
+    scale_badge,
     scale_name,
     tsunami_label,
 )
@@ -39,21 +38,19 @@ def build_summary(quake: QuakeInfo) -> Text:
     eq = quake.earthquake
     hypo = eq.hypocenter
     max_s = eq.max_scale
-    hex_color = scale_hex(max_s)
 
     text = Text()
 
     # 震度バッジ + マグニチュード + 相対時刻
-    badge_fg = "black" if max_s in (40, 45) else "white"
-    text.append(f" 震度 {scale_name(max_s)} ", style=f"bold {badge_fg} on {hex_color}")
+    text.append(f" 震度 {scale_name(max_s)} ", style=scale_badge(max_s))
     mag = f" M{hypo.magnitude:.1f}" if hypo.magnitude > 0 else " M---"
-    text.append(mag, style=f"bold {hex_color}")
+    text.append(mag, style="bold")
     rel = relative_time(quake.display_time)
     if rel:
         text.append(f"  {rel}", style="dim italic")
     text.append("\n\n")
 
-    text.append(f" {hypo.name or '震源調査中'}\n\n", style="bold white")
+    text.append(f" {hypo.name or '震源調査中'}\n\n", style="bold")
 
     # (ラベル, 値, 値のスタイル)。値が無い項目は行ごと省く
     rows: list[tuple[str, str, str]] = []
@@ -78,10 +75,11 @@ def build_summary(quake: QuakeInfo) -> Text:
     rows.append(("観測地点", f"{len(quake.points)}地点" if quake.points else "---", ""))
 
     tsunami = eq.domestic_tsunami
+    # 警報色は文字色にすると白地で沈むため、震度バッジと同じく背景に敷く
     tsunami_style = {
-        "Warning": "bold #e51e28",
-        "Watch": "bold #ffc832",
-        "Checking": "bold #ff8c00",
+        "Warning": "bold #ffffff on #e51e28",
+        "Watch": "bold #000000 on #ffc832",
+        "Checking": "bold #000000 on #ff8c00",
     }.get(tsunami, "")
     rows.append(("津波", tsunami_label(tsunami), tsunami_style))
 
@@ -102,9 +100,9 @@ def build_region_line(quake: QuakeInfo, region: str) -> Text:
     """「自分の地域」で観測された震度の行を組み立てる"""
     text = Text()
     scale = quake.max_scale_in(region)
-    text.append(f" 📍 {region}  ", style="bold white")
+    text.append(f" 📍 {region}  ", style="bold")
     if scale > 0:
-        text.append(f"震度{scale_name(scale)}", style=f"bold {scale_color(scale)}")
+        text.append(f" 震度{scale_name(scale)} ", style=scale_badge(scale))
         text.append(" (この地震での最大)", style="dim")
     else:
         text.append("揺れの観測なし", style="dim")
@@ -146,13 +144,13 @@ class ObservationListWidget(Widget):
                     by_pref.setdefault(p.pref or "不明", []).append(short_addr(p))
 
             count = sum(len(addrs) for addrs in by_pref.values())
-            text.append(f" 震度{scale_name(s)}", style=f"bold {scale_color(s)}")
+            text.append(f" 震度{scale_name(s)} ", style=scale_badge(s))
             text.append(f"  {count}地点\n", style="dim")
 
             for pref, addrs in by_pref.items():
-                text.append(f"  {pref}\n", style="white")
+                text.append(f"  {pref}\n", style="bold")
                 for line in pack_names(addrs, "", avail):
-                    text.append(f"   {line}\n", style="grey70")
+                    text.append(f"   {line}\n", style="dim")
             text.append("\n")
 
         return text
@@ -180,9 +178,10 @@ class QuakeDetailScreen(ModalScreen):
         max-width: 100%;
         height: 90%;
         padding: 1 2;
-        border: round #2e2e48;
-        background: #10101c;
-        border-title-color: #8b8bb8;
+        border: round ansi_bright_black;
+        /* 背後のメイン画面を透かさないよう、端末の背景色で塗りつぶす */
+        background: ansi_default;
+        border-title-color: ansi_default;
         border-title-style: bold;
     }
 
@@ -198,7 +197,7 @@ class QuakeDetailScreen(ModalScreen):
     #quake-detail-list-title {
         height: 1;
         margin-top: 1;
-        color: #8b8bb8;
+        color: ansi_default;
         text-style: bold;
     }
 
@@ -210,7 +209,8 @@ class QuakeDetailScreen(ModalScreen):
     #quake-detail-footer {
         height: 1;
         margin-top: 1;
-        color: #8b8bb8;
+        color: ansi_default;
+        text-style: dim;
     }
     """
 

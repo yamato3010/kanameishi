@@ -9,7 +9,7 @@ from textual.reactive import reactive
 from ..api.models import (
     QuakeInfo,
     relative_time,
-    scale_hex,
+    scale_badge,
     scale_name,
     tsunami_label,
 )
@@ -50,19 +50,17 @@ class QuakeDetailWidget(Widget):
         eq = quake.earthquake
         hypo = eq.hypocenter
         max_s = eq.max_scale
-        hex_color = scale_hex(max_s)
 
         # 震度バッジ + マグニチュード + 震源地
-        badge_fg = "black" if max_s in (40, 45) else "white"
-        text.append(f" 震度 {scale_name(max_s)} ", style=f"bold {badge_fg} on {hex_color}")
+        text.append(f" 震度 {scale_name(max_s)} ", style=scale_badge(max_s))
         mag_str = f" M{hypo.magnitude:.1f}" if hypo.magnitude > 0 else " M---"
-        text.append(mag_str, style=f"bold {hex_color}")
+        text.append(mag_str, style="bold")
         rel = relative_time(quake.display_time)
         if rel:
             text.append(f"  {rel}", style="dim italic")
         text.append("\n\n")
 
-        text.append(f" {hypo.name or '震源調査中'}\n", style="bold white")
+        text.append(f" {hypo.name or '震源調査中'}\n", style="bold")
 
         # 発生時刻
         text.append(" 発生 ", style="dim")
@@ -88,11 +86,11 @@ class QuakeDetailWidget(Widget):
         tsunami = eq.domestic_tsunami
         t_label = tsunami_label(tsunami)
         if tsunami == "Warning":
-            text.append(f" 🌊 津波: {t_label}", style="bold white on #e51e28")
+            text.append(f" 🌊 津波: {t_label}", style="bold #ffffff on #e51e28")
         elif tsunami == "Watch":
-            text.append(f" 🌊 津波: {t_label}", style="bold black on #ffc832")
+            text.append(f" 🌊 津波: {t_label}", style="bold #000000 on #ffc832")
         elif tsunami == "Checking":
-            text.append(f" 🌊 津波: {t_label}", style="bold #ff8c00")
+            text.append(f" 🌊 津波: {t_label}", style="bold #000000 on #ff8c00")
         else:
             text.append(f" 🌊 津波: {t_label}", style="dim")
 
