@@ -102,12 +102,16 @@ class SettingsScreen(ModalScreen[Optional[Config]]):
         color: ansi_default;
     }
 
-    /* ボタンの既定色もテーマ由来の RGB なので端末の色に置き換える */
+    /* ボタンの既定色もテーマ由来の RGB なので端末の色に置き換える。
+       枠は押せる範囲を示すもので、色は他のパネルと揃える */
     #settings-dialog Button {
+        border: round ansi_bright_black;
+        background: ansi_default;
         color: ansi_default;
     }
 
     #settings-dialog Button.-primary {
+        border: round ansi_blue;
         color: ansi_blue;
         text-style: bold;
     }
@@ -220,8 +224,8 @@ class SettingsScreen(ModalScreen[Optional[Config]]):
             yield Static(f"保存先: {config_path()}", id="settings-path")
 
             with Horizontal(id="settings-buttons"):
-                yield Button("保存", variant="primary", compact=True, id="save")
-                yield Button("取消", compact=True, id="cancel")
+                yield Button("保存", variant="primary", id="save")
+                yield Button("取消", id="cancel")
 
             yield Static(
                 "↑↓/jk 移動  space 切替  ⏎ 決定  s 保存  esc 閉じる",
