@@ -9,10 +9,11 @@ from textual.reactive import reactive
 from ..api.models import TsunamiInfo
 
 # 津波予報グレード: API値 → (表示名, スタイル)
+# 震度バッジと同じく、文字色は端末のパレットに左右されないHEX指定にする
 GRADE_STYLES: dict[str, tuple[str, str]] = {
-    "MajorWarning": ("大津波警報", "bold white on #8c14a0"),
-    "Warning": ("津波警報", "bold white on #e51e28"),
-    "Watch": ("津波注意報", "bold black on #ffc832"),
+    "MajorWarning": ("大津波警報", "bold #ffffff on #8c14a0"),
+    "Warning": ("津波警報", "bold #ffffff on #e51e28"),
+    "Watch": ("津波注意報", "bold #000000 on #ffc832"),
     "Unknown": ("不明", "dim"),
 }
 
@@ -35,7 +36,7 @@ class TsunamiPanelWidget(Widget):
         tsunami = self.tsunami_data
 
         if tsunami is None or tsunami.cancelled or not tsunami.areas:
-            text.append("✓ ", style="bold #22c55e")
+            text.append("✓ ", style="bold green")
             text.append("発表中の津波予報はありません", style="dim")
             return text
 

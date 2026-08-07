@@ -6,7 +6,12 @@ from rich.text import Text
 from textual.widget import Widget
 from textual.reactive import reactive
 
-from ..api.models import EEWArea, EEWInfo, scale_color, scale_hex, scale_name
+from ..api.models import (
+    EEWArea,
+    EEWInfo,
+    scale_badge,
+    scale_name,
+)
 
 # 表示する予報区の最大数
 MAX_AREAS = 8
@@ -42,14 +47,12 @@ class EEWPanelWidget(Widget):
             return text
 
         max_s = eew.max_expected_scale
-        hex_color = scale_hex(max_s)
-        badge_fg = "black" if max_s in (40, 45) else "white"
 
         # 見出し行: 予想最大震度 + M + 震源名
-        text.append(f" 予想最大震度 {scale_name(max_s)} ", style=f"bold {badge_fg} on {hex_color}")
+        text.append(f" 予想最大震度 {scale_name(max_s)} ", style=scale_badge(max_s))
         if eew.magnitude > 0:
-            text.append(f" M{eew.magnitude:.1f}", style=f"bold {hex_color}")
-        text.append(f" {eew.location}", style="bold white")
+            text.append(f" M{eew.magnitude:.1f}", style="bold")
+        text.append(f" {eew.location}", style="bold")
         if eew.test:
             text.append(" [テスト]", style="bold yellow")
         text.append("\n")
@@ -78,21 +81,21 @@ class EEWPanelWidget(Widget):
             ),
         )
         for area in areas[:max_areas]:
-            color = scale_color(area.scale)
             mine = bool(self.region_pref) and area.pref == self.region_pref
-            text.append(" ●", style=f"bold {color}")
+            text.append(" ")
+            text.append("●", style=scale_badge(area.scale))
             text.append(
                 f" {area.name[:10]:　<10}",
-                style="bold white on #2d2d50" if mine else "white",
+                style="bold reverse" if mine else "bold",
             )
-            text.append(f" 震度{scale_name(area.scale)}", style=f"bold {color}")
+            text.append(f" 震度{scale_name(area.scale)} ", style=scale_badge(area.scale))
             remain = area.seconds_until_arrival()
             if remain is None:
                 text.append("  ---", style="dim")
             elif remain <= 0:
-                text.append("  到達", style="bold red1")
+                text.append("  到達", style="bold red")
             else:
-                text.append(f"  あと{remain:2d}秒", style="bold gold1")
+                text.append(f"  あと{remain:2d}秒", style="bold yellow")
             text.append("\n")
         if len(eew.areas) > max_areas:
             text.append(f" ほか{len(eew.areas) - max_areas}地域\n", style="dim")
@@ -101,19 +104,17 @@ class EEWPanelWidget(Widget):
 
     def _append_region_block(self, text: Text, area: EEWArea) -> None:
         """「自分の地域」の予想震度と主要動到達カウントダウンを強調表示する"""
-        hex_color = scale_hex(area.scale)
-        badge_fg = "black" if area.scale in (40, 45) else "white"
-        text.append(f" 📍 あなたの地域 {area.name} ", style=f"bold {badge_fg} on {hex_color}")
+        text.append(f" 📍 あなたの地域 {area.name} ", style=scale_badge(area.scale))
         text.append("\n")
 
-        text.append(f"  予想震度 {scale_name(area.scale)}", style=f"bold {hex_color}")
+        text.append(f"  予想震度 {scale_name(area.scale)} ", style=scale_badge(area.scale))
         remain = area.seconds_until_arrival()
         if remain is None:
             text.append("   到達予測なし", style="dim")
         elif remain <= 0:
-            text.append("   主要動 到達", style="bold red1")
+            text.append("   主要動 到達", style="bold red")
         else:
-            text.append(f"   主要動 あと {remain} 秒", style="bold gold1")
+            text.append(f"   主要動 あと {remain} 秒", style="bold yellow")
         text.append("\n\n")
 
     def update_eew(self, eew: EEWInfo | None) -> None:

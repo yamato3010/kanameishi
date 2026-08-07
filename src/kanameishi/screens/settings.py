@@ -46,50 +46,74 @@ class SettingsScreen(ModalScreen[Optional[Config]]):
         max-height: 100%;
         overflow-y: auto;
         padding: 1 2;
-        border: round #2e2e48;
-        background: #10101c;
-        border-title-color: #8b8bb8;
+        border: round ansi_bright_black;
+        /* 背後のメイン画面を透かさないよう、端末の背景色で塗りつぶす */
+        background: ansi_default;
+        border-title-color: ansi_default;
         border-title-style: bold;
     }
 
     #settings-dialog Label {
         margin-top: 1;
-        color: #8b8bb8;
+        color: ansi_default;
+        text-style: dim;
     }
 
     /* プルダウンは枠を省いて高さを詰めている (端末が低くてもフォームが収まる
-       ように)。代わりに背景で選択欄の範囲を示す */
-    #settings-dialog Select > SelectCurrent {
-        background: #2e2e48;
+       ように)。代わりに背景で選択欄の範囲を示す。
+       中身 (現在値・▼) は Textual のテーマ色を持つので個別に上書きする */
+    #settings-dialog Select > SelectCurrent,
+    #settings-dialog Select > SelectCurrent Static#label,
+    #settings-dialog Select > SelectCurrent .arrow {
+        background: ansi_bright_black;
+        color: ansi_default;
     }
 
     /* Select は枠線でしかフォーカスを示さない作りなので、枠を消すと変化が無くなる。
-       開いたときの選択行と同じ配色 (履歴表のカーソル色) で塗って分かるようにする */
-    #settings-dialog Select:focus > SelectCurrent {
-        background: #2d2d50;
-        color: white;
-    }
-
-    /* SelectCurrent の中身は自前の色を持っているので、フォーカス時はまとめて上書きする */
+       履歴表のカーソルと同じく前景色と背景色の反転で示す (ansi_white などの
+       固定色はライト端末で地の色と同化してフォーカスが見えなくなるため) */
+    #settings-dialog Select:focus > SelectCurrent,
     #settings-dialog Select:focus > SelectCurrent Static#label,
     #settings-dialog Select:focus > SelectCurrent .arrow {
-        color: white;
+        background: ansi_default;
+        color: ansi_default;
+        text-style: reverse;
     }
 
-    /* チェックボックスもアプリの配色に寄せる (既定は Textual のテーマ色) */
+    /* チェックボックスもアプリの配色に寄せる (既定は Textual のテーマ色)。
+       ✕印の地に色を敷くと、ライト端末では ansi_green と明度が近くなって
+       印が消えるため、地は端末の背景のままにして印の色と太さだけで示す */
     #settings-dialog Checkbox > .toggle--button {
-        color: #10101c;
-        background: #2e2e48;
+        color: ansi_default;
+        background: ansi_default;
+        text-style: dim;
     }
 
     #settings-dialog Checkbox.-on > .toggle--button {
-        color: #22c55e;
-        background: #2e2e48;
+        color: ansi_green;
+        background: ansi_default;
+        text-style: bold;
     }
 
+    /* Checkbox のラベルは Visual 経由で描かれ text-style: reverse が落ちるため、
+       フォーカスは履歴表のカーソルと同じ ansi_bright_black の帯で示す */
     #settings-dialog Checkbox:focus > .toggle--label {
-        color: white;
-        background: #2d2d50;
+        background: ansi_bright_black;
+        color: ansi_default;
+    }
+
+    /* ボタンの既定色もテーマ由来の RGB なので端末の色に置き換える */
+    #settings-dialog Button {
+        color: ansi_default;
+    }
+
+    #settings-dialog Button.-primary {
+        color: ansi_blue;
+        text-style: bold;
+    }
+
+    #settings-dialog Button:focus {
+        text-style: bold reverse;
     }
 
     /* ここから下が通知の設定。上の「自分の地域」と続いて見えないよう間を空ける */
@@ -106,13 +130,14 @@ class SettingsScreen(ModalScreen[Optional[Config]]):
     #settings-note {
         height: auto;
         margin-top: 1;
-        color: #ffc832;
+        color: ansi_yellow;
     }
 
     #settings-path {
         height: auto;
         margin-top: 1;
-        color: #8b8bb8;
+        color: ansi_default;
+        text-style: dim;
     }
 
     #settings-buttons {
@@ -128,7 +153,8 @@ class SettingsScreen(ModalScreen[Optional[Config]]):
     #settings-footer {
         height: auto;
         margin-top: 1;
-        color: #8b8bb8;
+        color: ansi_default;
+        text-style: dim;
     }
     """
 

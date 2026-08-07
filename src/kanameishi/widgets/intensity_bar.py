@@ -12,6 +12,7 @@ from textual.reactive import reactive
 from ..api.models import (
     ObservationPoint,
     QuakeInfo,
+    scale_badge,
     scale_name,
     scale_color,
     SCALE_NAMES,
@@ -137,16 +138,15 @@ class IntensityBarWidget(Widget):
             if not by_pref:
                 continue
 
-            color = scale_color(s)
             prefs = list(by_pref.items())
             for pref, addrs in prefs[:MAX_PREFS_PER_SCALE]:
-                text.append(f" 震度{scale_name(s)}", style=f"bold {color}")
-                text.append(f" {pref}\n", style="white")
+                text.append(f" 震度{scale_name(s)} ", style=scale_badge(s))
+                text.append(f" {pref}\n", style="bold")
                 shown = addrs[:MAX_ADDRS_PER_PREF]
                 hidden = len(addrs) - len(shown)
                 suffix = f"ほか{hidden}地点" if hidden > 0 else ""
                 for line in pack_names(shown, suffix, avail):
-                    text.append(f"   {line}\n", style="grey70")
+                    text.append(f"   {line}\n", style="dim")
 
             remaining_prefs = len(prefs) - MAX_PREFS_PER_SCALE
             if remaining_prefs > 0:

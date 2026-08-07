@@ -1,21 +1,54 @@
 /* Kanameishi - Textual CSS スタイル */
 
 Screen {
-    background: #0b0b14;
+    background: ansi_default;
     layout: vertical;
 }
 
-/* モーダル画面。背後のメイン画面を透過させるため、
-   上の Screen ルール (不透明) をここで打ち消す */
-AboutScreen, SettingsScreen, QuakeDetailScreen {
-    background: #0b0b14 60%;
+/* スクロールバーの色はテーマ由来の RGB なので、そのままだと不透明な帯が残る。
+   溝は端末の背景を通し、つまみだけ ANSI パレットで描く */
+* {
+    scrollbar-background: transparent;
+    scrollbar-background-hover: transparent;
+    scrollbar-background-active: transparent;
+    scrollbar-corner-color: transparent;
+    scrollbar-color: ansi_bright_black;
+    scrollbar-color-hover: ansi_white;
+    scrollbar-color-active: ansi_white;
 }
 
+/* モーダル画面。背景を持たせず、背後のメイン画面をそのまま見せる。
+   alpha 0 だと Textual が混色を丸ごと迂回して背後をそのまま流すので、
+   端末の透過も保たれる (パネルの ANSI 色が truecolor に変換されない)。
+
+   なお「半透明で背後を暗くする」ことはできない。透過は「色を持たない」ため
+   混色の相手が無く、Textual は nominal RGB の (0,0,0) として計算する。
+   結果として背後が真っ黒に潰れ、さらに truecolor 化して端末の透過も失われる */
+AboutScreen, SettingsScreen, QuakeDetailScreen {
+    background: transparent;
+}
+
+/* ANSIの黒(0)・白(7)は端末の配色によって「背景側の色」にも「前景側の色」にもなる。
+   ライト端末では ansi_white ≒ 背景色・ansi_black ≒ 文字色になり文字が消えるため、
+   地の色としては使わず、端末が対で用意している ansi_default を使う。
+   強調は bold / dim / reverse と、端末が可読性を保証している有彩色で表現する */
+
 /* ── ヘッダー ─────────────────── */
-HeaderWidget {
-    height: 2;
-    background: #14141f;
-    border-bottom: heavy #e51e28;
+/* Textual 標準の Header。既定色 ($panel / $foreground や時計の帯) はテーマ由来の
+   RGB なので、ステータスバーと揃えて端末の背景を通し、色は ANSI で指定する。
+   color は子に継承されないため、子ウィジェットにも個別に当てる */
+Header, HeaderIcon, HeaderTitle, HeaderClock {
+    background: transparent;
+    color: ansi_default;
+}
+
+/* 時計は既定で text-opacity 85% だが、ANSI 色は混色できないので素の色で出す */
+HeaderClock {
+    text-opacity: 100%;
+}
+
+HeaderIcon:hover {
+    background: ansi_bright_black;
 }
 
 /* ── 緊急地震速報バナー (発表中のみ表示) ── */
@@ -50,19 +83,18 @@ HeaderWidget {
 #map-panel {
     width: 51;
     min-width: 40;
-    border: round #2e2e48;
-    background: #10101c;
+    border: round ansi_bright_black;
     padding: 0 1;
     overflow-y: auto;
     scrollbar-size-vertical: 1;
-    border-title-color: #8b8bb8;
+    border-title-color: ansi_default;
     border-title-style: bold;
 }
 
 #map-legend {
     dock: bottom;
     height: 1;
-    background: #16162a;
+    background: transparent;
     padding: 0 1;
 }
 
@@ -73,6 +105,8 @@ HeaderWidget {
     layout: vertical;
 }
 
+/* 緊急地震速報パネル。背景を敷くと端末の文字色 (ライト端末では黒) と潰れるため、
+   警報らしさは太い赤枠と赤い見出しで出し、地は端末の背景をそのまま使う */
 #eew-panel {
     display: none;
     height: auto;
@@ -80,28 +114,25 @@ HeaderWidget {
        スクロールバーが出ると幅が1桁減って予報区の各行が折り返してしまう */
     max-height: 16;
     border: heavy #e51e28;
-    background: #1a0d14;
     overflow-y: auto;
-    border-title-color: #ff5a5a;
+    border-title-color: #e51e28;
     border-title-style: bold;
 }
 
 #detail-panel {
     height: auto;
     min-height: 9;
-    border: round #2e2e48;
-    background: #10101c;
-    border-title-color: #8b8bb8;
+    border: round ansi_bright_black;
+    border-title-color: ansi_default;
     border-title-style: bold;
 }
 
 #intensity-panel {
     height: 1fr;
     min-height: 7;
-    border: round #2e2e48;
-    background: #10101c;
+    border: round ansi_bright_black;
     overflow-y: auto;
-    border-title-color: #8b8bb8;
+    border-title-color: ansi_default;
     border-title-style: bold;
 }
 
@@ -109,10 +140,9 @@ HeaderWidget {
     height: auto;
     min-height: 4;
     max-height: 10;
-    border: round #2e2e48;
-    background: #10101c;
+    border: round ansi_bright_black;
     overflow-y: auto;
-    border-title-color: #8b8bb8;
+    border-title-color: ansi_default;
     border-title-style: bold;
 }
 
@@ -122,38 +152,41 @@ HeaderWidget {
     max-height: 13;
     min-height: 8;
     margin: 0 1;
-    border: round #2e2e48;
-    background: #10101c;
-    border-title-color: #8b8bb8;
+    border: round ansi_bright_black;
+    border-title-color: ansi_default;
     border-title-style: bold;
 }
 
+/* DataTable は既定で background: $surface / color: $foreground (テーマ由来の RGB) を
+   持つので上書きする。フォーカス時の background-tint も打ち消す (RGB との混色で
+   ANSI 色が truecolor に変換され、端末のパレットから外れてしまうため) */
 QuakeTableWidget {
-    background: #10101c;
+    background: transparent;
+    background-tint: transparent;
+    color: ansi_default;
 }
 
+/* 見出しは下線で示す。選択行の帯 (ansi_bright_black) と塗り分けるため地は敷かない */
 QuakeTableWidget > .datatable--header {
-    background: #1c1c2e;
-    color: #a1a1c2;
-    text-style: bold;
+    background: transparent;
+    color: ansi_default;
+    text-style: bold underline;
 }
 
+/* 選択行。DataTable はカーソル行の文字色でセル自身の文字色も塗り潰すため、
+   ここで指定できる色は端末の既定色だけになる。地は ansi_bright_black を敷いて
+   帯として見せる (ライト・ダークどちらでも既定色と十分な差がつく) */
 QuakeTableWidget > .datatable--cursor {
-    background: #2d2d50;
-    color: white;
+    background: ansi_bright_black;
+    color: ansi_default;
     text-style: bold;
 }
 
-QuakeTableWidget > .datatable--even-row {
-    background: #13131f;
-}
-
-QuakeTableWidget > .datatable--odd-row {
-    background: #10101c;
-}
+/* ANSIパレットには行の縞に使える暗い中間色が無いため、ゼブラ縞は使わない
+   (QuakeTableWidget 側で zebra_stripes を切っている) */
 
 /* ── ステータスバー ─────────── */
 StatusBarWidget {
-    background: #14141f;
-    color: #8b8bb8;
+    background: transparent;
+    color: ansi_default;
 }

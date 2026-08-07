@@ -8,7 +8,7 @@ from textual.message import Message
 from textual.widgets import DataTable
 from textual.reactive import reactive
 
-from ..api.models import QuakeInfo, scale_name, scale_color, tsunami_label
+from ..api.models import QuakeInfo, scale_hex, scale_name, tsunami_label
 
 # 末尾から何行手前で次ページを読み始めるか
 LOAD_MORE_MARGIN = 10
@@ -39,7 +39,8 @@ class QuakeTableWidget(DataTable):
         super().__init__(**kwargs)
         self._quake_list: list[QuakeInfo] = []
         self.cursor_type = "row"
-        self.zebra_stripes = True
+        # ANSIパレットには行の縞に使える暗い中間色が無いので縞は付けない
+        self.zebra_stripes = False
 
     def on_mount(self) -> None:
         self.add_columns(
@@ -92,7 +93,11 @@ class QuakeTableWidget(DataTable):
         location = hypo.name or "---"
         mag = f"{hypo.magnitude:.1f}" if hypo.magnitude > 0 else "---"
         depth = f"{hypo.depth}km" if hypo.depth > 0 else ("浅い" if hypo.name else "---")
-        max_s = Text(scale_name(eq.max_scale), style=scale_color(eq.max_scale))
+        # 震度色は背景として置く。カーソル行はセルの文字色を端末の既定色で
+        # 塗り潰すため、文字色に載せた震度色は選択した瞬間に失われてしまう
+        max_s = Text()
+        max_s.append("  ", style=f"on {scale_hex(eq.max_scale)}")
+        max_s.append(f" {scale_name(eq.max_scale)}", style="bold")
         tsunami = tsunami_label(eq.domestic_tsunami)
 
         self.add_row(

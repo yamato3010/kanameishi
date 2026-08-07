@@ -33,7 +33,8 @@ SCALE_NAMES: dict[int, str] = {
 # 震度スケール: API値 → Rich カラー
 SCALE_COLORS: dict[int, str] = {
     -1: "dim",
-    10: "grey70",
+    # 震度1は無彩色なので、白地でも黒地でも沈まない中間の明度にする
+    10: "grey50",
     20: "dodger_blue1",
     30: "green3",
     40: "gold1",
@@ -82,6 +83,21 @@ def scale_color(scale: int) -> str:
 def scale_hex(scale: int) -> str:
     """震度API値をHEXカラーに変換"""
     return SCALE_HEX.get(scale, SCALE_HEX[-1])
+
+
+def scale_text_hex(scale: int) -> str:
+    """震度バッジ (背景が scale_hex) に載せる文字色をHEXで返す"""
+    return "#ffffff" if scale in (-1, 70) else "#000000"
+
+
+def scale_badge(scale: int) -> str:
+    """震度バッジ用の Rich スタイル
+
+    震度色は暗い地の上でしか読めない明度のものがあるため、文字色として使わず
+    背景に敷いて上に scale_text_hex を載せる。前景・背景とも固定なので
+    端末がライトでもダークでも同じように読める。
+    """
+    return f"bold {scale_text_hex(scale)} on {scale_hex(scale)}"
 
 
 def tsunami_label(key: str) -> str:
