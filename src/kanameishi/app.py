@@ -101,7 +101,7 @@ class EarthquakeApp(App):
                 yield JapanMapWidget(id="japan-map")
                 yield Static(build_legend(), id="map-legend")
 
-            # 右: EEW(発表中のみ) + 地震詳細 + 震度分布 + 津波情報
+            # 右: EEW(発表中のみ) + 地震詳細 + 震度分布 + 津波情報 + 履歴
             with Vertical(id="info-panel"):
                 with Container(id="eew-panel") as eew_panel:
                     eew_panel.border_title = "🚨 緊急地震速報"
@@ -119,10 +119,9 @@ class EarthquakeApp(App):
                     tsunami_panel.border_title = "🌊 津波情報"
                     yield TsunamiPanelWidget(id="tsunami-info")
 
-        # 下部: 地震履歴
-        with Container(id="history-panel") as history_panel:
-            history_panel.border_title = "📜 地震履歴"
-            yield QuakeTableWidget(id="quake-table")
+                with Container(id="history-panel") as history_panel:
+                    history_panel.border_title = "📜 地震履歴"
+                    yield QuakeTableWidget(id="quake-table")
 
         # ステータスバー
         yield StatusBarWidget(id="status-bar")
