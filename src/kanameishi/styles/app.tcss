@@ -72,10 +72,11 @@ HeaderIcon:hover {
 }
 
 /* ── メインコンテンツ ────────── */
+/* min-height は右パネルの最小構成 (詳細9 + 震度分布7 + 津波4 + 履歴8) に合わせる */
 #main-content {
     layout: horizontal;
     height: 1fr;
-    min-height: 16;
+    min-height: 28;
     margin: 0 1;
 }
 
@@ -98,7 +99,7 @@ HeaderIcon:hover {
     padding: 0 1;
 }
 
-/* 右パネル: 情報 */
+/* 右パネル: 情報 + 履歴 */
 #info-panel {
     width: 1fr;
     min-width: 34;
@@ -146,12 +147,11 @@ HeaderIcon:hover {
     border-title-style: bold;
 }
 
-/* ── 下部パネル: 履歴 ──────── */
+/* ── 履歴 (右パネルの最下段) ── */
 #history-panel {
     height: auto;
     max-height: 13;
     min-height: 8;
-    margin: 0 1;
     border: round ansi_bright_black;
     border-title-color: ansi_default;
     border-title-style: bold;

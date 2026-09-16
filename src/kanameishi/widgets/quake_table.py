@@ -13,6 +13,10 @@ from ..api.models import QuakeInfo, scale_hex, scale_name, tsunami_label
 # 末尾から何行手前で次ページを読み始めるか
 LOAD_MORE_MARGIN = 10
 
+# 一覧は右カラム幅 (端末幅 - 55桁) に収める必要があるため、長い津波ラベルだけ短縮する。
+# 詳細パネル側は幅に余裕があるので TSUNAMI_LABELS の表記をそのまま使う
+TSUNAMI_SHORT: dict[str, str] = {"NonEffective": "心配なし"}
+
 
 class QuakeTableWidget(DataTable):
     """地震履歴を一覧表示するDataTable"""
@@ -43,8 +47,9 @@ class QuakeTableWidget(DataTable):
         self.zebra_stripes = False
 
     def on_mount(self) -> None:
+        # 見出しは列幅を決める要素でもあるため、右カラムに収まる短さにしている
         self.add_columns(
-            "時刻", "震源地", "M", "深さ", "最大震度", "津波"
+            "時刻", "震源地", "M", "深さ", "震度", "津波"
         )
 
     def watch_scroll_y(self, old_value: float, new_value: float) -> None:
@@ -89,7 +94,8 @@ class QuakeTableWidget(DataTable):
         eq = quake.earthquake
         hypo = eq.hypocenter
 
-        time_str = (eq.time or quake.time)[:16]
+        # 年は省いて列幅を詰める (年まで含む発生時刻は詳細パネルと d の詳細画面に出る)
+        time_str = (eq.time or quake.time)[5:16]
         location = hypo.name or "---"
         mag = f"{hypo.magnitude:.1f}" if hypo.magnitude > 0 else "---"
         depth = f"{hypo.depth}km" if hypo.depth > 0 else ("浅い" if hypo.name else "---")
@@ -98,7 +104,9 @@ class QuakeTableWidget(DataTable):
         max_s = Text()
         max_s.append("  ", style=f"on {scale_hex(eq.max_scale)}")
         max_s.append(f" {scale_name(eq.max_scale)}", style="bold")
-        tsunami = tsunami_label(eq.domestic_tsunami)
+        tsunami = TSUNAMI_SHORT.get(
+            eq.domestic_tsunami, tsunami_label(eq.domestic_tsunami)
+        )
 
         self.add_row(
             time_str,
