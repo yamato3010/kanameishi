@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/yamato3010/kanameishi/compare/v0.4.0...v0.5.0) (2026-09-16)
+
+
+### Features
+
+* レイアウトを変更 ([d9a833f](https://github.com/yamato3010/kanameishi/commit/d9a833f15614e5f29a33ffbf98b1856470749e0b))
+
 ## [0.4.0](https://github.com/yamato3010/kanameishi/compare/v0.3.0...v0.4.0) (2026-08-06)
 
 
