@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.5.1](https://github.com/yamato3010/kanameishi/compare/v0.5.0...v0.5.1) (2026-10-22)
+
+
+### Bug Fixes
+
+* **deps:** 🐛  certifi&gt;=2026.10.19 を必須にする（GHSA-6q48-6c7w-9gw2) ([45e4b74](https://github.com/yamato3010/kanameishi/commit/45e4b7488d2234891c248f37a4d24f971404dc00))
+* **deps:** 🐛  certifi&gt;=2026.10.19 を必須にする（GHSA-6q48-6c7w-9gw2) ([5b50199](https://github.com/yamato3010/kanameishi/commit/5b5019954dafcd661e2cc8ec83c9f7e4f9238a65))
+
 ## [0.5.0](https://github.com/yamato3010/kanameishi/compare/v0.4.0...v0.5.0) (2026-09-16)
 
 
