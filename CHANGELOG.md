@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.2](https://github.com/yamato3010/kanameishi/compare/v0.5.1...v0.5.2) (2026-10-31)
+
+
+### Documentation
+
+* readmeにスクリーンショットを追加 ([1fe82be](https://github.com/yamato3010/kanameishi/commit/1fe82becc73e1636d65f8b4d45c72f94c85d0b20))
+
 ## [0.5.1](https://github.com/yamato3010/kanameishi/compare/v0.5.0...v0.5.1) (2026-10-22)
 
 
